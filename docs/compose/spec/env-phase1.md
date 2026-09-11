@@ -3,7 +3,7 @@ feature: env-phase1
 status: delivered
 updated: 2026-09-12
 branch: feat/env-phase1
-commits: 13deebd..<HEAD>
+commits: 13deebd..45fb599
 ---
 
 # Windows Env Rescue — Phase 1 (Foundation + Terminal + Bootstrap)
