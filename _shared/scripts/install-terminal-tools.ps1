@@ -1,28 +1,20 @@
 <#
 .SYNOPSIS
-  Yazi Windows Rescue — terminal-boost tool installer.
-  Detects which modern CLI tools are present and installs ONLY the missing ones via scoop.
+  windows-env-rescue — L1 terminal tools installer (manifest-driven).
 
 .DESCRIPTION
-  Run from PowerShell 7+ (pwsh) AFTER scoop is confirmed installed.
-  - Prints each tool as OK or MISSING.
-  - Installs only the missing scoop packages.
-  - Idempotent: safe to run more than once.
-
-  Tools and the scoop package that provides each:
-    eza         -> eza          (modern ls with icons/git)
-    bat         -> bat          (cat with syntax highlighting)
-    delta       -> delta        (pretty git diffs)
-    starship    -> starship     (cross-shell prompt)
-    dust        -> dust         (visual du)
-    duf         -> duf          (friendlier df)
-    procs       -> procs        (modern ps)
-    btm         -> bottom       (htop replacement)
-    yq          -> yq           (YAML/JSON processor)
+  Reads _shared/manifests/terminal.toml, installs missing scoop packages, then
+  writes/refreshes the managed profile block (windows-env-rescue markers).
+  Migrates a legacy terminal-boost profile block when present.
+  Ends with:
+    INSTALL-TERMINAL-TOOLS: OK | PARTIAL | FAIL: <reason>
+  Exit codes: 0 OK, 2 PARTIAL, 1 FAIL.
 
 .NOTES
-  Designed for PowerShell 7+.
+  Prefer PowerShell 7+. Safe to re-run (idempotent profile block replace).
 #>
+
+$ErrorActionPreference = 'Continue'
 
 try {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -32,92 +24,142 @@ try {
     chcp 65001 > $null
 } catch { }
 
-$setupOk = $true
-
 if ($PSVersionTable.PSVersion.Major -lt 6) {
     Write-Output "This step needs PowerShell 7 (pwsh)."
-    Write-Output "INSTALL-TERMINAL-TOOLS: PARTIAL"
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: PowerShell 7+ required"
     exit 1
 }
 
 if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
-    Write-Output "ERROR: scoop is not installed yet."
-    Write-Output "INSTALL-TERMINAL-TOOLS: PARTIAL"
+    Write-Output "ERROR: scoop is not installed. Run install-foundation.ps1 first."
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: scoop missing"
     exit 1
 }
 
-# command-name -> @(scoop-package, human description)
-$tools = [ordered]@{
-    "eza"      = @("eza",       "modern ls with icons/git")
-    "bat"      = @("bat",       "cat with syntax highlighting")
-    "delta"    = @("delta",     "pretty git diffs")
-    "starship" = @("starship",  "cross-shell prompt")
-    "dust"     = @("dust",      "visual du")
-    "duf"      = @("duf",       "friendlier df")
-    "procs"    = @("procs",     "modern ps")
-    "btm"      = @("bottom",    "htop replacement")
-    "yq"       = @("yq",        "YAML/JSON processor")
-}
+$shared = Split-Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'Import-WerManifest.ps1')
+$manifestPath = Join-Path $shared 'manifests\terminal.toml'
+$manifest = Import-WerManifest -Path $manifestPath
 
-Write-Output ""
-Write-Output "===== Terminal tool status ====="
-$missingPkgs = @()
-foreach ($cmd in $tools.Keys) {
-    $pkg  = $tools[$cmd][0]
-    $desc = $tools[$cmd][1]
-    $found = Get-Command $cmd -ErrorAction SilentlyContinue
-    if ($found) {
-        Write-Output ("OK       {0,-10} -> {1}" -f $cmd, $found.Source)
+Write-Output "===== windows-env-rescue terminal ====="
+Write-Output "Manifest: $($manifest.Name)"
+
+$missingPkgs = [System.Collections.Generic.List[string]]::new()
+$requiredFail = @()
+
+foreach ($tool in $manifest.Tools) {
+    $bin = $tool['binary']
+    $pkg = $tool['scoop']
+    $req = [bool]$tool['required']
+    if (-not $bin) { continue }
+    if (Get-Command $bin -ErrorAction SilentlyContinue) {
+        Write-Output ("OK       {0,-10} scoop={1}" -f $bin, $pkg)
     } else {
-        Write-Output ("MISSING  {0,-10} ({1}) -> will install scoop package '{2}'" -f $cmd, $desc, $pkg)
-        if ($missingPkgs -notcontains $pkg) { $missingPkgs += $pkg }
+        Write-Output ("MISSING  {0,-10} scoop={1} required={2}" -f $bin, $pkg, $req)
+        if ($missingPkgs -notcontains $pkg) { $missingPkgs.Add($pkg) }
     }
 }
 
-Write-Output ""
-if ($missingPkgs.Count -eq 0) {
-    Write-Output "All terminal tools already present. Nothing to install."
-} else {
-    $buckets = scoop bucket list 2>$null
-    if ($buckets -notmatch 'main') {
-        Write-Output "Scoop 'main' bucket is missing. Adding it..."
+$status = 'OK'
+
+if ($missingPkgs.Count -gt 0) {
+    $buckets = @(scoop bucket list 2>$null | Out-String)
+    if (($buckets -join "`n") -notmatch 'main') {
+        Write-Output "Adding scoop bucket 'main'..."
         scoop bucket add main
         if ($LASTEXITCODE -ne 0) {
-            Write-Output "ERROR: Failed to add the 'main' scoop bucket."
-            Write-Output "INSTALL-TERMINAL-TOOLS: PARTIAL"
+            Write-Output "ERROR: failed to add main bucket"
+            Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: scoop bucket main"
             exit 1
         }
     }
-
-    Write-Output "Installing missing packages: $($missingPkgs -join ' ')"
-    scoop install @missingPkgs
-    $installExitCode = $LASTEXITCODE
-
-    if ($installExitCode -ne 0) {
-        $setupOk = $false
-        Write-Output "WARNING: scoop install finished with exit code $installExitCode."
-    } else {
-        Write-Output "All packages installed successfully."
+    Write-Output "Installing: $($missingPkgs -join ' ')"
+    foreach ($pkg in $missingPkgs) {
+        scoop install $pkg
+        if ($LASTEXITCODE -ne 0) {
+            Write-Output "  install failed: $pkg (exit $LASTEXITCODE)"
+            $tool = $manifest.Tools | Where-Object { $_['scoop'] -eq $pkg } | Select-Object -First 1
+            if ($tool -and [bool]$tool['required']) {
+                $requiredFail += $tool['binary']
+            } else {
+                $status = 'PARTIAL'
+            }
+        }
+    }
+    if (-not $env:PATH.ToLower().Contains('scoop\shims')) {
+        $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
     }
 }
 
-$stillMissing = @()
-foreach ($cmd in $tools.Keys) {
-    if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-        $stillMissing += $cmd
+# Re-check
+$stillReq = @()
+foreach ($tool in $manifest.Tools) {
+    $bin = $tool['binary']
+    if (-not $bin) { continue }
+    if (-not (Get-Command $bin -ErrorAction SilentlyContinue)) {
+        if ([bool]$tool['required']) { $stillReq += $bin }
+        elseif ($status -eq 'OK') { $status = 'PARTIAL' }
     }
 }
-if ($stillMissing.Count -gt 0) {
-    $setupOk = $false
-    Write-Output ""
-    Write-Output "Still missing after install attempt: $($stillMissing -join ', ')"
-}
-
-Write-Output ""
-if ($setupOk) {
-    Write-Output "INSTALL-TERMINAL-TOOLS: OK"
-    exit 0
-} else {
-    Write-Output "INSTALL-TERMINAL-TOOLS: PARTIAL"
+if ($requiredFail.Count -gt 0 -or $stillReq.Count -gt 0) {
+    $all = @($requiredFail + $stillReq | Select-Object -Unique)
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: required missing: $($all -join ', ')"
     exit 1
 }
+
+# --- Profile block ---
+$profilePath = $PROFILE
+$blockFile = Join-Path $shared 'scripts\profile-block.ps1'
+if (-not (Test-Path -LiteralPath $blockFile)) {
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: profile-block.ps1 missing"
+    exit 1
+}
+$block = Get-Content -LiteralPath $blockFile -Raw -Encoding UTF8
+
+$start = if ($manifest.Profile -and $manifest.Profile['start']) { $manifest.Profile['start'] } else { '# >>> windows-env-rescue >>>' }
+$end   = if ($manifest.Profile -and $manifest.Profile['end']) { $manifest.Profile['end'] } else { '# <<< windows-env-rescue <<<' }
+$legacyStart = '# >>> terminal-boost >>>'
+$legacyEnd   = '# <<< terminal-boost <<<'
+
+if (-not (Test-Path -LiteralPath $profilePath)) {
+    New-Item -ItemType File -Path $profilePath -Force | Out-Null
+    Write-Output "Created $profilePath"
+}
+
+$ts = Get-Date -Format 'yyyyMMdd-HHmmss'
+Copy-Item -LiteralPath $profilePath -Destination "$profilePath.bak-$ts" -Force
+Write-Output "Backed up profile to $profilePath.bak-$ts"
+
+$content = Get-Content -LiteralPath $profilePath -Raw -Encoding UTF8
+if ($null -eq $content) { $content = '' }
+
+function Set-WerProfileRegion([string]$Body, [string]$StartMark, [string]$EndMark, [string]$NewBlock) {
+    if ($Body -match [regex]::Escape($StartMark)) {
+        $pattern = '(?s)' + [regex]::Escape($StartMark) + '.*?' + [regex]::Escape($EndMark)
+        return [regex]::Replace($Body, $pattern, $NewBlock)
+    }
+    return $null
+}
+
+$newContent = Set-WerProfileRegion $content $start $end $block
+if ($null -ne $newContent) {
+    Write-Output "Replaced existing windows-env-rescue block"
+} else {
+    $newContent = Set-WerProfileRegion $content $legacyStart $legacyEnd $block
+    if ($null -ne $newContent) {
+        Write-Output "Migrated legacy terminal-boost block -> windows-env-rescue"
+    } else {
+        $newContent = $content.TrimEnd() + "`n`n" + $block
+        Write-Output "Appended windows-env-rescue block"
+    }
+}
+
+Set-Content -LiteralPath $profilePath -Value $newContent -NoNewline -Encoding UTF8
+
+Write-Output ""
+if ($status -eq 'OK') {
+    Write-Output "INSTALL-TERMINAL-TOOLS: OK"
+    exit 0
+}
+Write-Output "INSTALL-TERMINAL-TOOLS: PARTIAL"
+exit 2

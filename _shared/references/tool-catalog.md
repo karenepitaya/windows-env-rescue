@@ -42,7 +42,7 @@ then `scoop bucket add <bucket>` (confirm with the user first) and retry.
   drop-in. If the user explicitly wants more shadowing, do it, but warn them.
 
 - **Why a single marked block.** Everything lives between
-  `# >>> terminal-boost >>>` and `# <<< terminal-boost <<<` in `$PROFILE`. Re-running
+  `# >>> windows-env-rescue >>>` and `# <<< windows-env-rescue <<<` in `$PROFILE`. Re-running
   the skill replaces that region in place (idempotent); uninstalling is "delete the
   block". Never scatter edits across the profile.
 

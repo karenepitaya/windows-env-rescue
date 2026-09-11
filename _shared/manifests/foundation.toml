@@ -1,0 +1,18 @@
+schema = 1
+name = "foundation"
+
+# Scoop itself is bootstrapped by install-foundation.ps1 when missing.
+
+[[tool]]
+id = "pwsh"
+scoop = "pwsh"
+binary = "pwsh"
+required = true
+verify = "pwsh -NoProfile -Command \"if ($PSVersionTable.PSVersion.Major -ge 7) { exit 0 } else { exit 1 }\""
+
+[[tool]]
+id = "git"
+scoop = "git"
+binary = "git"
+required = false
+verify = "git --version"

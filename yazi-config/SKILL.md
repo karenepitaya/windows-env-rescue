@@ -199,8 +199,8 @@ If "全部配上" or "只写 profile block":
 ```powershell
 $profilePath = $PROFILE
 $block = Get-Content "${CLAUDE_SKILL_DIR}\..\_shared\scripts\profile-block.ps1" -Raw -Encoding UTF8
-$startMarker = "# >>> terminal-boost >>>"
-$endMarker = "# <<< terminal-boost <<<"
+$startMarker = "# >>> windows-env-rescue >>>"
+$endMarker = "# <<< windows-env-rescue <<<"
 
 if (-not (Test-Path $profilePath)) {
     New-Item -ItemType File -Path $profilePath -Force | Out-Null
@@ -218,12 +218,12 @@ if ($content -match [regex]::Escape($startMarker)) {
     $pattern = "(?s)" + [regex]::Escape($startMarker) + ".*?" + [regex]::Escape($endMarker)
     $newContent = [regex]::Replace($content, $pattern, $block)
     Set-Content $profilePath $newContent -NoNewline -Encoding UTF8
-    "Replaced existing terminal-boost block in $profilePath"
+    "Replaced existing windows-env-rescue block in $profilePath"
 } else {
     # Append block
     $newContent = $content.TrimEnd() + "`n`n" + $block
     Set-Content $profilePath $newContent -NoNewline -Encoding UTF8
-    "Appended terminal-boost block to $profilePath"
+    "Appended windows-env-rescue block to $profilePath"
 }
 ```
 

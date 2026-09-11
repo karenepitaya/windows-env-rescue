@@ -37,10 +37,19 @@ $required = @(
     "yazi-detect\SKILL.md",
     "yazi-install\SKILL.md",
     "yazi-config\SKILL.md",
-    "terminal-boost\SKILL.md",
+    "env-foundation\SKILL.md",
+    "env-terminal\SKILL.md",
+    "env-doctor\SKILL.md",
+    "env-bootstrap\SKILL.md",
     "_shared\scripts\apply-config.ps1",
     "_shared\scripts\profile-block.ps1",
     "_shared\scripts\install-terminal-tools.ps1",
+    "_shared\scripts\install-foundation.ps1",
+    "_shared\scripts\doctor.ps1",
+    "_shared\scripts\bootstrap.ps1",
+    "_shared\scripts\Import-WerManifest.ps1",
+    "_shared\manifests\foundation.toml",
+    "_shared\manifests\terminal.toml",
     "_shared\config\keymap-zh.toml",
     "_shared\config\wt-keybindings.json",
     "_shared\references\tool-catalog.md"
@@ -117,7 +126,7 @@ foreach ($skill in Get-ChildItem $repoDir -Filter "SKILL.md" -Recurse) {
 }
 
 $gitignore = Get-Content (Join-Path $repoDir ".gitignore") -Raw -Encoding UTF8
-if ($gitignore -match '(?m)^\.claude/$') {
+if ($gitignore -match '(?m)^\.claude/[^\S\r\n]*\r?$') {
     Pass ".claude/ directory is ignored"
 } else {
     Fail ".claude/ must be ignored in .gitignore"
@@ -132,13 +141,25 @@ foreach ($package in "7zip", "ripgrep", "resvg") {
     }
 }
 
-$termToolsScript = Get-Content (Join-Path $sharedDir "scripts\install-terminal-tools.ps1") -Raw -Encoding UTF8
-foreach ($package in "eza", "bat", "delta", "starship") {
-    if ($termToolsScript -match [regex]::Escape('"' + $package + '"')) {
-        Pass "terminal tool mapping present: $package"
-    } else {
-        Fail "terminal tool mapping missing: $package"
+$terminalManifestPath = Join-Path $sharedDir "manifests\terminal.toml"
+if (-not (Test-Path $terminalManifestPath)) {
+    Fail "missing terminal manifest: $terminalManifestPath"
+} else {
+    $terminalManifest = Get-Content $terminalManifestPath -Raw -Encoding UTF8
+    foreach ($package in "eza", "bat", "delta", "starship") {
+        if ($terminalManifest -match ('(?m)^scoop\s*=\s*"' + [regex]::Escape($package) + '"')) {
+            Pass "terminal tool mapping present: $package"
+        } else {
+            Fail "terminal tool mapping missing: $package"
+        }
     }
+}
+
+$foundationManifestPath = Join-Path $sharedDir "manifests\foundation.toml"
+if (Test-Path $foundationManifestPath) {
+    Pass "foundation manifest present"
+} else {
+    Fail "missing foundation manifest"
 }
 
 # Validate profile-block.ps1 has correct starship-before-zoxide order

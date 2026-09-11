@@ -1,7 +1,8 @@
-# >>> terminal-boost >>>
-# Managed by the terminal-boost skill. To uninstall, delete this whole block
-# (from the >>> line to the <<< line). Every feature is guarded by a tool-presence
-# check, so this block stays safe even if a tool is missing or later removed.
+# >>> windows-env-rescue >>>
+# Managed by the windows-env-rescue suite (env-terminal). To uninstall, delete this
+# whole block (from the >>> line to the <<< line). Every feature is guarded by a
+# tool-presence check, so this block stays safe even if a tool is missing or later
+# removed.
 
 # --- yazi : `y` quit-to-cd with IME fix ------------------------------------
 # Disables Chinese IME before launching yazi (prevents j/k key interception),
@@ -140,4 +141,4 @@ if (Get-Command fzf -ErrorAction SilentlyContinue) {
         }
     }
 }
-# <<< terminal-boost <<<
+# <<< windows-env-rescue <<<

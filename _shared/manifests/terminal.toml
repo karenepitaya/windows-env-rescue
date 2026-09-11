@@ -1,0 +1,100 @@
+schema = 1
+name = "terminal"
+
+[[tool]]
+id = "starship"
+scoop = "starship"
+binary = "starship"
+required = true
+verify = "starship --version"
+
+[[tool]]
+id = "eza"
+scoop = "eza"
+binary = "eza"
+required = false
+verify = "eza --version"
+
+[[tool]]
+id = "bat"
+scoop = "bat"
+binary = "bat"
+required = false
+verify = "bat --version"
+
+[[tool]]
+id = "fd"
+scoop = "fd"
+binary = "fd"
+required = false
+verify = "fd --version"
+
+[[tool]]
+id = "ripgrep"
+scoop = "ripgrep"
+binary = "rg"
+required = false
+verify = "rg --version"
+
+[[tool]]
+id = "fzf"
+scoop = "fzf"
+binary = "fzf"
+required = false
+verify = "fzf --version"
+
+[[tool]]
+id = "zoxide"
+scoop = "zoxide"
+binary = "zoxide"
+required = false
+verify = "zoxide --version"
+
+[[tool]]
+id = "delta"
+scoop = "delta"
+binary = "delta"
+required = false
+verify = "delta --version"
+
+[[tool]]
+id = "dust"
+scoop = "dust"
+binary = "dust"
+required = false
+verify = "dust --version"
+
+[[tool]]
+id = "duf"
+scoop = "duf"
+binary = "duf"
+required = false
+verify = "duf --version"
+
+[[tool]]
+id = "procs"
+scoop = "procs"
+binary = "procs"
+required = false
+verify = "procs --version"
+
+[[tool]]
+id = "btm"
+scoop = "bottom"
+binary = "btm"
+required = false
+verify = "btm --version"
+
+[[tool]]
+id = "yq"
+scoop = "yq"
+binary = "yq"
+required = false
+verify = "yq --version"
+
+[profile]
+block_file = "scripts/profile-block.ps1"
+start = "# >>> windows-env-rescue >>>"
+end = "# <<< windows-env-rescue <<<"
+legacy_start = "# >>> terminal-boost >>>"
+legacy_end = "# <<< terminal-boost <<<"
