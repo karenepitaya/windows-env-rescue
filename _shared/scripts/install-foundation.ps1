@@ -18,7 +18,6 @@
 
 $ErrorActionPreference = 'Continue'
 $status = 'OK'
-$failReason = ''
 
 function Set-WerUtf8 {
     try {
@@ -165,9 +164,14 @@ foreach ($tool in $manifest.Tools) {
         elseif ($status -eq 'OK') { $status = 'PARTIAL' }
         continue
     }
-    # re-add shims path in case scoop just installed
-    if (-not $env:PATH.ToLower().Contains('scoop\shims')) {
-        $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+    # re-add shims path in case scoop just installed (custom SCOOP root safe)
+    $scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
+    if ($scoopCmd) {
+        $scoopRoot = Split-Path (Split-Path $scoopCmd.Source -Parent) -Parent
+        $shims = Join-Path $scoopRoot 'shims'
+        if ($scoopRoot -and (Test-Path $shims) -and $env:PATH -notlike "*$shims*") {
+            $env:PATH = "$shims;$env:PATH"
+        }
     }
     $ok = Test-WerVerify $verify
     if (-not $ok) {

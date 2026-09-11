@@ -214,9 +214,9 @@ Copy-Item $profilePath "$profilePath.bak-$ts"
 
 $content = Get-Content $profilePath -Raw -Encoding UTF8
 if ($content -match [regex]::Escape($startMarker)) {
-    # Replace existing block
+    # MatchEvaluator: raw replacement would expand $_ $& in the block text
     $pattern = "(?s)" + [regex]::Escape($startMarker) + ".*?" + [regex]::Escape($endMarker)
-    $newContent = [regex]::Replace($content, $pattern, $block)
+    $newContent = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $block })
     Set-Content $profilePath $newContent -NoNewline -Encoding UTF8
     "Replaced existing windows-env-rescue block in $profilePath"
 } else {

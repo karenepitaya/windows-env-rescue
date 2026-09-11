@@ -1,14 +1,26 @@
 ---
 feature: env-phase1
-status: in-progress
+status: delivered
 updated: 2026-09-12
 branch: feat/env-phase1
-commits: # filled at delivery
+commits: 13deebd..<HEAD>
 ---
 
 # Windows Env Rescue — Phase 1 (Foundation + Terminal + Bootstrap)
 
 ## Report
+
+**What was built** — 一层可裸跑的 PowerShell 引擎加四个 skill：`install-foundation.ps1`（scoop/pwsh7/策略/网络门）、manifest 驱动的 `install-terminal-tools.ps1`（含 `windows-env-rescue` profile 标记与旧 `terminal-boost` 迁移）、分层 `doctor.ps1`、编排 `bootstrap.ps1`。钦定清单在 `_shared/manifests/`。`terminal-boost` skill 删除；README/校验脚本改为 `windows-env-rescue`。一期完成线为终端就绪（L0+L1 无 RED）。
+
+**Verification** — 本机 Windows 上：`Import-WerManifest` 解析 foundation(2)/terminal(13 tools) PASS；`install-foundation` 已就绪幂等 `OK` exit 0；`install-terminal-tools` 迁移后再次替换 `OK` exit 0；profile 替换单元验证 `twice_eq_once=True`、`$_` 管道原样、legacy 迁移后稳定；`doctor` L0/L1/L6 全 GREEN exit 0；`bootstrap` 全链路 `BOOTSTRAP: OK` exit 0；`validate-release` 新结构与 parse PASS（yazi complete-zh `yazi --debug` 超时为 PRE-EXISTING，未阻断）。
+
+**Journey log**
+
+1. Review 抓到 C1：`[regex]::Replace` 把 profile 里的 `$_` 当替换变量，第二次写入会损坏块——改用 MatchEvaluator 并归一尾部换行后才幂等。
+2. bootstrap 把子脚本 stdout 和 `$LASTEXITCODE` 混进同一返回值；改为 `Out-Host` + 直接读 `$LASTEXITCODE`。
+3. `terminal-boost`→`env-terminal` 时保留脚本文件名 `install-terminal-tools.ps1`，降低 yazi-install 回归面。
+4. validate-release 对 terminal 工具的检查从硬编码脚本文本改为 `terminal.toml` 清单，避免引擎改读 manifest 后误报。
+5. 沙箱禁止本会话 `git worktree add`，worktree 需用户手建——跨 agent 协作时的固定约束。
 
 ## [S1] Problem
 
@@ -176,4 +188,4 @@ Skill：`env-doctor/SKILL.md`。现有 yazi 诊断能力不回归：doctor 可�
 - [x] T7: 移除 terminal-boost、更新引用 — acceptance: 仓库内无指向 terminal-boost 作为活动 skill 的文档；profile 迁移说明在 env-terminal skill 中 (covers: S2; depends: T3)
 - [x] T8: 仓库与文档改名 windows-env-rescue — acceptance: README 标题/结构/命令中的套件名一致；本地 git 可在分支上工作不依赖远程已改名 (covers: S2)
 - [x] T9: 更新 validate-release 覆盖新结构 — acceptance: 对本分支运行校验脚本通过或明确列出仅环境缺依赖的跳过项 (covers: S2; depends: T1, T6)
-- [ ] T10: 端到端验证记录 — acceptance: 在可用 Windows 上至少完成「doctor 一次 + foundation/terminal 已就绪时幂等跳过」实测；结果记入 Report (covers: S2; depends: T5)
+- [x] T10: 端到端验证记录 — acceptance: 在可用 Windows 上至少完成「doctor 一次 + foundation/terminal 已就绪时幂等跳过」实测；结果记入 Report (covers: S2; depends: T5)

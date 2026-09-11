@@ -6,67 +6,57 @@
   Runs: install-foundation.ps1 -> install-terminal-tools.ps1 -> doctor.ps1
   FAIL stops later install layers; PARTIAL continues.
   Exit codes:
-    0 = all install layers OK and doctor not RED
-    2 = some PARTIAL (or doctor YELLOW with no FAIL)
-    1 = any FAIL or doctor RED
+    0 = all install layers OK and doctor not RED (YELLOW allowed)
+    2 = some install layer PARTIAL (no FAIL)
+    1 = any install FAIL or doctor RED
 #>
 
 $ErrorActionPreference = 'Continue'
 $scripts = $PSScriptRoot
 
-function Invoke-WerScript([string]$Name) {
-    $path = Join-Path $scripts $Name
-    if (-not (Test-Path -LiteralPath $path)) {
-        Write-Output "BOOTSTRAP: FAIL: missing script $Name"
-        return 1
-    }
-    Write-Output ""
-    Write-Output ">>>>>> $Name"
-    & $path
-    return $LASTEXITCODE
-}
+Write-Host "########## windows-env-rescue bootstrap ##########"
+Write-Host "Order: foundation -> terminal -> doctor"
 
-Write-Output "########## windows-env-rescue bootstrap ##########"
-Write-Output "Order: foundation -> terminal -> doctor"
-
-$foundationExit = Invoke-WerScript 'install-foundation.ps1'
+$foundationExit = 0
 $terminalExit = 0
 $doctorExit = 0
 
+Write-Host ""
+Write-Host ">>>>>> install-foundation.ps1"
+& (Join-Path $scripts 'install-foundation.ps1') | Out-Host
+$foundationExit = $LASTEXITCODE
+
 if ($foundationExit -eq 1) {
-    Write-Output "foundation FAIL — skipping terminal install; running doctor for summary."
+    Write-Host "foundation FAIL — skipping terminal install; running doctor for summary."
 } else {
-    # Re-exec terminal installer in pwsh 7 when available
     $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
     $termPath = Join-Path $scripts 'install-terminal-tools.ps1'
+    Write-Host ""
     if ($pwsh) {
-        Write-Output ""
-        Write-Output ">>>>>> install-terminal-tools.ps1 (pwsh)"
-        & pwsh -NoProfile -File $termPath
-        $terminalExit = $LASTEXITCODE
+        Write-Host ">>>>>> install-terminal-tools.ps1 (pwsh)"
+        & pwsh -NoProfile -File $termPath | Out-Host
     } else {
-        Write-Output ""
-        Write-Output ">>>>>> install-terminal-tools.ps1"
-        & $termPath
-        $terminalExit = $LASTEXITCODE
+        Write-Host ">>>>>> install-terminal-tools.ps1"
+        & $termPath | Out-Host
     }
+    $terminalExit = $LASTEXITCODE
 }
 
-Write-Output ""
-Write-Output ">>>>>> doctor.ps1"
-& (Join-Path $scripts 'doctor.ps1')
+Write-Host ""
+Write-Host ">>>>>> doctor.ps1"
+& (Join-Path $scripts 'doctor.ps1') | Out-Host
 $doctorExit = $LASTEXITCODE
 
-Write-Output ""
-Write-Output "Summary: foundation=$foundationExit terminal=$terminalExit doctor=$doctorExit"
+Write-Host ""
+Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit doctor=$doctorExit"
 
 if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $doctorExit -eq 1) {
-    Write-Output "BOOTSTRAP: FAIL"
+    Write-Host "BOOTSTRAP: FAIL"
     exit 1
 }
 if ($foundationExit -eq 2 -or $terminalExit -eq 2) {
-    Write-Output "BOOTSTRAP: PARTIAL"
+    Write-Host "BOOTSTRAP: PARTIAL"
     exit 2
 }
-Write-Output "BOOTSTRAP: OK"
+Write-Host "BOOTSTRAP: OK"
 exit 0

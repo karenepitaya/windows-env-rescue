@@ -86,9 +86,15 @@ if ($missingPkgs.Count -gt 0) {
             }
         }
     }
-    if (-not $env:PATH.ToLower().Contains('scoop\shims')) {
-        $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+# Refresh PATH for custom scoop roots (not only default USERPROFILE\scoop)
+$scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
+if ($scoopCmd) {
+    $scoopRoot = Split-Path (Split-Path $scoopCmd.Source -Parent) -Parent
+    $shims = Join-Path $scoopRoot 'shims'
+    if ($scoopRoot -and (Test-Path $shims) -and $env:PATH -notlike "*$shims*") {
+        $env:PATH = "$shims;$env:PATH"
     }
+}
 }
 
 # Re-check
@@ -134,11 +140,12 @@ $content = Get-Content -LiteralPath $profilePath -Raw -Encoding UTF8
 if ($null -eq $content) { $content = '' }
 
 function Set-WerProfileRegion([string]$Body, [string]$StartMark, [string]$EndMark, [string]$NewBlock) {
-    if ($Body -match [regex]::Escape($StartMark)) {
-        $pattern = '(?s)' + [regex]::Escape($StartMark) + '.*?' + [regex]::Escape($EndMark)
-        return [regex]::Replace($Body, $pattern, $NewBlock)
-    }
-    return $null
+    if ($Body -notmatch [regex]::Escape($StartMark)) { return $null }
+    $normalized = $NewBlock.TrimEnd("`r", "`n")
+    # Consume trailing newlines after end marker so re-runs are byte-stable.
+    $pattern = '(?s)' + [regex]::Escape($StartMark) + '.*?' + [regex]::Escape($EndMark) + '[\r\n]*'
+    # MatchEvaluator required: string replacement would expand $_ $& $1 inside the block.
+    return [regex]::Replace($Body, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $normalized + "`r`n" })
 }
 
 $newContent = Set-WerProfileRegion $content $start $end $block
