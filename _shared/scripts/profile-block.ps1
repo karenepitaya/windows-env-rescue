@@ -8,7 +8,10 @@
 # Disables Chinese IME before launching yazi (prevents j/k key interception),
 # restores IME state on exit. Uses --cwd-file to follow the user's final directory.
 if (Get-Command yazi -ErrorAction SilentlyContinue) {
-    try {
+    # Guard on the type itself: Add-Type throws a non-terminating error on
+    # duplicate type names that try/catch cannot suppress, and it treats
+    # byte-different sources (e.g. LF vs CRLF) as different code.
+    if (-not ('IMECtrl' -as [type])) {
         Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -25,7 +28,7 @@ public class IMECtrl {
     public static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
 }
 "@
-    } catch {}  # Already added (re-run safe)
+    }
 
     function y {
         $hwnd = [IMECtrl]::GetForegroundWindow()

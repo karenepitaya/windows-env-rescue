@@ -40,13 +40,15 @@ function Test-WerNetwork {
     foreach ($u in $urls) {
         try {
             $null = Invoke-WebRequest -Uri $u -Method Head -TimeoutSec 8 -UseBasicParsing -ErrorAction Stop
-            Write-Output "  [OK]      $u"
+            # Write-Host, not Write-Output: anything written to the output pipeline
+            # here would be captured by the caller into $blocked and fake a blockage.
+            Write-Host "  [OK]      $u"
         } catch {
             if ($null -ne $_.Exception.Response) {
-                Write-Output "  [OK*]     $u  (reached; non-2xx)"
+                Write-Host "  [OK*]     $u  (reached; non-2xx)"
             } else {
-                Write-Output "  [BLOCKED] $u"
-                Write-Output "            $($_.Exception.Message)"
+                Write-Host "  [BLOCKED] $u"
+                Write-Host "            $($_.Exception.Message)"
                 $blocked += $u
             }
         }

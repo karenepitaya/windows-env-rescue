@@ -131,26 +131,13 @@ Do not edit TOML here. The generator keeps Notepad as fallback for VS Code and N
 
 **C7b. 常用项目目录跳转（optional）.** `AskUserQuestion`: **「跳过（推荐——以后随时可加）」**／「我有，帮我加上 `g p` 跳转」. If yes, ask for the path and remember it as `ProjectPath`; do not edit TOML here.
 
-**C7c. `y` 退出跳转函数.** "退出 yazi 时，PowerShell 跟着停在你最后浏览的目录——单项体验提升最大的一个。" `AskUserQuestion`: **「加上（推荐）」**／「先不用」. If yes, show the function first, then:
-```powershell
-$func = @'
+**C7c. `y` 退出跳转函数 + IME 修复.** "退出 yazi 时，PowerShell 跟着停在你最后浏览的目录——单项体验提升最大的一个。附带中文输入法修复：启动 yazi 前自动关输入法，防止 j/k 被吞。" `AskUserQuestion`: **「加上（推荐）」**／「先不用」. If yes, write/refresh the managed profile block — `y`（含 IME 修复）就在块里。**永远不要用 `Add-Content` 往 $PROFILE 手写函数**（无标记、无备份、编码不安全，还会和块里的 `y` 重复定义）：
 
-function y {
-    $tmp = [System.IO.Path]::GetTempFileName()
-    yazi $args --cwd-file="$tmp"
-    $cwd = Get-Content -Path $tmp -Encoding UTF8
-    if (-not [String]::IsNullOrEmpty($cwd) -and $cwd -ne $PWD.Path) {
-        Set-Location -LiteralPath ([System.IO.Path]::GetFullPath($cwd))
-    }
-    Remove-Item -Path $tmp
-}
-'@
-if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
-if (-not (Select-String -Path $PROFILE -Pattern 'function y \{' -Quiet)) {
-    Add-Content -Path $PROFILE -Value $func -Encoding UTF8; "已加入 $PROFILE"
-} else { "PROFILE 里已有 y 函数，未重复添加。" }
+```powershell
+pwsh -ExecutionPolicy Bypass -File "${CLAUDE_SKILL_DIR}\..\_shared\scripts\Update-WerProfileBlock.ps1"
 ```
-之后用 `y` 启动（`q` 退出并跳转，`Q` 退出不跳转）；新窗口或 `. $PROFILE` 生效。
+
+最后一行必须是 `PROFILE-BLOCK: OK`。该写入器幂等、自动备份（保留最近 5 份）、保留原文件编码。之后用 `y` 启动（`q` 退出并跳转，`Q` 退出不跳转）；新窗口或 `. $PROFILE` 生效。
 
 **C7d. 快速跳转增强（可选项, fzf + zoxide）.** 说明："yazi 默认键位里 `z` 用 fzf 模糊查找、`Z` 用 zoxide 跳到常去的目录——但这两个工具本体需要安装，zoxide 还要在 PowerShell 里挂上钩子才会记录你去过哪。装上后，在终端里 cd 和在 yazi 里跳转会共用同一份'常去目录'记忆。" `AskUserQuestion`:
 - **「装上（推荐——用过就回不去）」**
@@ -160,13 +147,10 @@ If yes:
 ```powershell
 scoop install fzf zoxide
 ```
-失败（网络）→ 如实报告、跳过本项、流程继续。成功 → hook zoxide into the profile（dedup-guarded）:
+失败（网络）→ 如实报告、跳过本项、流程继续。成功 → zoxide 的 PowerShell 钩子由套件 profile 标记块负责（块里检测到 zoxide 就自动 init 并挂上 `cd`/`z`/`zi`）——**不要手写 `zoxide init` 进 $PROFILE**（会和标记块重复初始化）。若本次流程还没写过标记块，跑一次统一写入器即可：
+
 ```powershell
-if (-not (Test-Path $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
-if (-not (Select-String -Path $PROFILE -Pattern 'zoxide init' -Quiet)) {
-    Add-Content -Path $PROFILE -Value "`nInvoke-Expression (& { (zoxide init powershell | Out-String) })" -Encoding UTF8
-    "已在 PROFILE 挂上 zoxide"
-} else { "PROFILE 已有 zoxide 初始化，未重复添加。" }
+pwsh -ExecutionPolicy Bypass -File "${CLAUDE_SKILL_DIR}\..\_shared\scripts\Update-WerProfileBlock.ps1"
 ```
 告知预期："新窗口生效。zoxide 的'常去目录'数据库是随你日常 cd 慢慢积累的——刚装好时按 `Z` 跳不出几个地方是正常的，用几天就顺了；`z`（fzf 模糊找）则立刻可用。"
 
@@ -196,36 +180,13 @@ If "全部配上" or "只写 profile block":
 
 **C-terminal-a. Profile block.** "在 PowerShell 配置文件里写入一段标记块，实现：`ls` 带图标、`cat` 语法高亮、fzf 模糊查找（Ctrl+R 历史、Ctrl+T 文件）、zoxide 智能 cd、starship 提示符、y 函数（退出 yazi 跳转目录+IME 修复）。整块可一键删除。"
 
+唯一允许的写法是调统一写入器（幂等、自动备份轮转、保留原编码、自动迁移旧 terminal-boost 标记；**禁止在任何 SKILL/脚本里内联第三份写块逻辑**）：
+
 ```powershell
-$profilePath = $PROFILE
-$block = Get-Content "${CLAUDE_SKILL_DIR}\..\_shared\scripts\profile-block.ps1" -Raw -Encoding UTF8
-$startMarker = "# >>> windows-env-rescue >>>"
-$endMarker = "# <<< windows-env-rescue <<<"
-
-if (-not (Test-Path $profilePath)) {
-    New-Item -ItemType File -Path $profilePath -Force | Out-Null
-    "Created $profilePath"
-}
-
-# Backup
-$ts = Get-Date -Format "yyyyMMdd-HHmmss"
-Copy-Item $profilePath "$profilePath.bak-$ts"
-"Backed up to: $profilePath.bak-$ts"
-
-$content = Get-Content $profilePath -Raw -Encoding UTF8
-if ($content -match [regex]::Escape($startMarker)) {
-    # MatchEvaluator: raw replacement would expand $_ $& in the block text
-    $pattern = "(?s)" + [regex]::Escape($startMarker) + ".*?" + [regex]::Escape($endMarker)
-    $newContent = [regex]::Replace($content, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $block })
-    Set-Content $profilePath $newContent -NoNewline -Encoding UTF8
-    "Replaced existing windows-env-rescue block in $profilePath"
-} else {
-    # Append block
-    $newContent = $content.TrimEnd() + "`n`n" + $block
-    Set-Content $profilePath $newContent -NoNewline -Encoding UTF8
-    "Appended windows-env-rescue block to $profilePath"
-}
+pwsh -ExecutionPolicy Bypass -File "${CLAUDE_SKILL_DIR}\..\_shared\scripts\Update-WerProfileBlock.ps1"
 ```
+
+最后一行必须是 `PROFILE-BLOCK: OK`；`FAIL` 则如实报告并停下。
 
 If "全部配上":
 
@@ -237,7 +198,26 @@ If found, "用 vim 风格的快捷键管理面板：Alt+hjkl 切换焦点、Alt+
 - **「应用（推荐）」**
 - 「不改」
 
-If yes: backup the settings.json, read it, replace only the `keybindings` array with the contents of `_shared/config/wt-keybindings.json`, write back. Only touch `keybindings` — schemes, themes, profiles stay as-is.
+If yes: 备份后**按 `id` 合并**，绝不整体替换 `keybindings` 数组——用户自己的快捷键一条都不能丢。套件条目（`_shared/config/wt-keybindings.json`）覆盖同 `id` 项，其余原样保留；schemes、themes、profiles 一律不动：
+
+```powershell
+$wt = (Get-ChildItem "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal*\LocalState\settings.json" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+Copy-Item $wt "$wt.bak-$(Get-Date -Format yyyyMMdd-HHmmss)"
+try {
+    $json  = Get-Content $wt -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+    $suite = Get-Content "${CLAUDE_SKILL_DIR}\..\_shared\config\wt-keybindings.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+} catch {
+    # settings.json 可能带注释/尾逗号。解析失败 = 保持原样、如实报告，禁止手写重建用户的 JSON。
+    "settings.json 解析失败（$($_.Exception.Message)），未做任何修改。备份在 $wt.bak-*"; exit 1
+}
+$suiteIds = @($suite | ForEach-Object { $_.id })
+$prop = if ($json.PSObject.Properties['actions']) { 'actions' } elseif ($json.PSObject.Properties['keybindings']) { 'keybindings' } else { 'actions' }
+$existing = @($json.$prop | Where-Object { -not $_.id -or $suiteIds -notcontains $_.id })
+$merged = @($existing) + @($suite)
+if ($json.PSObject.Properties[$prop]) { $json.$prop = $merged } else { $json | Add-Member -NotePropertyName $prop -NotePropertyValue $merged }
+$json | ConvertTo-Json -Depth 32 | Set-Content $wt -Encoding UTF8 -NoNewline
+"已合并 $($suite.Count) 条套件快捷键（保留你的 $($existing.Count) 条自定义），备份在 $wt.bak-*"
+```
 
 **C-terminal-c. git-delta（if delta was installed）.** "git-delta 让 git diff 输出更漂亮——语法高亮、行号、侧边导航。" `AskUserQuestion`:
 - **「设为 git 全局 pager（推荐）」**
@@ -268,6 +248,7 @@ Then **always** show the cheat sheet `../_shared/references/yazi-cheatsheet.md`�
 - `scripts/verify-yazi.ps1` — the C0 gate（READY/NOT-READY + NETWORK line）.
 - `scripts/install-preview-tools.ps1` — glow + CLICOLOR_FORCE（C5, optional item）.
 - `scripts/apply-config.ps1` — deterministic minimal/complete config generator; editor/project/Markdown/theme are parameters, never ad-hoc TOML edits.
+- `scripts/Update-WerProfileBlock.ps1` — the ONLY allowed `$PROFILE` writer (C7c/C7d/C-terminal-a): idempotent, backup-rotated, encoding-preserving.
 - `scripts/validate-release.ps1` — maintainer-only, non-destructive syntax/frontmatter/config-load release check.
 - `config/package.toml` — **version-pinned manifest**（piper @598cdb6, catppuccin-mocha @36c49ac — the author-verified combination; C6a installs from this via `ya pkg install`）.
 - `config/yazi-minimal.toml`, `config/yazi-complete.toml`, `config/keymap-zh.toml`, `config/keymap-complete.toml`, `config/theme.toml` — vendored tier templates. (`keymap-zh.toml` = 完整中文帮助菜单 + 自定义绑定；`keymap-complete.toml` = 英文帮助 + 自定义绑定。)

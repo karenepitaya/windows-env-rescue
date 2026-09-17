@@ -4,8 +4,9 @@
 
 .DESCRIPTION
   Avoids ad-hoc TOML editing by generating all suite-managed files from vendored
-  templates. Existing config must be backed up by the caller before this script
-  runs. Re-running is idempotent.
+  templates. The script backs up the existing config dir itself before any write
+  (timestamped copy, rotated to keep the newest 5), so bare runs are safe too.
+  Re-running is idempotent.
 #>
 
 [CmdletBinding()]
@@ -50,6 +51,16 @@ $sharedDir = Split-Path $PSScriptRoot -Parent
 $templateDir = Join-Path $sharedDir "config"
 $cfgDir = Join-Path $env:APPDATA "yazi\config"
 New-Item -ItemType Directory -Force -Path $cfgDir | Out-Null
+
+# Self-backup before any write/delete (never rely on the caller; rotate to 5).
+if (Get-ChildItem $cfgDir -Force -ErrorAction SilentlyContinue) {
+    $bak = "$env:APPDATA\yazi\config-backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
+    Copy-Item $cfgDir $bak -Recurse -Force
+    Write-Output "backup: $bak"
+    $old = Get-ChildItem "$env:APPDATA\yazi" -Directory -Filter 'config-backup-*' -ErrorAction SilentlyContinue |
+           Sort-Object Name -Descending | Select-Object -Skip 5
+    foreach ($f in $old) { Remove-Item $f.FullName -Recurse -Force; Write-Output "rotated old backup: $($f.Name)" }
+}
 
 if ($Tier -eq "Minimal") {
     Copy-Item (Join-Path $templateDir "yazi-minimal.toml") (Join-Path $cfgDir "yazi.toml") -Force
@@ -137,11 +148,13 @@ if ($ProjectPath) {
     $resolved = [System.IO.Path]::GetFullPath($ProjectPath).Replace("\", "/")
     $escaped = Convert-ToTomlSingleQuoted $resolved
     $entry = '    { on = ["g", "p"], run = ''cd "' + $escaped + '"'', desc = "Go to project directory" },'
-    $keymapStart = [regex]::new('(?m)^prepend_keymap\s*=\s*\[\r?$')
+    $keymapStart = [regex]::new('(?m)^(prepend_keymap\s*=\s*\[)\r?$')
     if (-not $keymapStart.IsMatch($keymap)) {
         throw "Could not find the managed prepend_keymap array in $keymapTemplate."
     }
-    $keymap = $keymapStart.Replace($keymap, ('$0' + [Environment]::NewLine + $entry), 1)
+    # Group 1 excludes the line's CR: re-inserting $0 verbatim on a CRLF template
+    # would emit a stray \r ("prepend_keymap = [\r\r\n") and break TOML parsing.
+    $keymap = $keymapStart.Replace($keymap, ('$1' + [Environment]::NewLine + $entry), 1)
 }
 Write-Utf8NoBom (Join-Path $cfgDir "keymap.toml") $keymap
 

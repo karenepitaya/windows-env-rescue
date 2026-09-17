@@ -113,55 +113,33 @@ if ($requiredFail.Count -gt 0 -or $stillReq.Count -gt 0) {
     exit 1
 }
 
-# --- Profile block ---
-$profilePath = $PROFILE
-$blockFile = Join-Path $shared 'scripts\profile-block.ps1'
-if (-not (Test-Path -LiteralPath $blockFile)) {
-    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: profile-block.ps1 missing"
+# --- Profile block (single writer: Update-WerProfileBlock.ps1) ---
+$writerPath = Join-Path $PSScriptRoot 'Update-WerProfileBlock.ps1'
+$blockFile  = Join-Path $shared 'scripts\profile-block.ps1'
+if ($manifest.Profile -and $manifest.Profile['block_file']) {
+    $blockFile = Join-Path $shared $manifest.Profile['block_file']
+}
+if (-not (Test-Path -LiteralPath $writerPath)) {
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: Update-WerProfileBlock.ps1 missing"
     exit 1
 }
-$block = Get-Content -LiteralPath $blockFile -Raw -Encoding UTF8
 
-$start = if ($manifest.Profile -and $manifest.Profile['start']) { $manifest.Profile['start'] } else { '# >>> windows-env-rescue >>>' }
-$end   = if ($manifest.Profile -and $manifest.Profile['end']) { $manifest.Profile['end'] } else { '# <<< windows-env-rescue <<<' }
-$legacyStart = '# >>> terminal-boost >>>'
-$legacyEnd   = '# <<< terminal-boost <<<'
-
-if (-not (Test-Path -LiteralPath $profilePath)) {
-    New-Item -ItemType File -Path $profilePath -Force | Out-Null
-    Write-Output "Created $profilePath"
+$writerArgs = @{
+    ProfilePath = $PROFILE
+    BlockFile   = $blockFile
+}
+if ($manifest.Profile) {
+    if ($manifest.Profile['start'])        { $writerArgs.StartMark   = $manifest.Profile['start'] }
+    if ($manifest.Profile['end'])          { $writerArgs.EndMark     = $manifest.Profile['end'] }
+    if ($manifest.Profile['legacy_start']) { $writerArgs.LegacyStart = $manifest.Profile['legacy_start'] }
+    if ($manifest.Profile['legacy_end'])   { $writerArgs.LegacyEnd   = $manifest.Profile['legacy_end'] }
 }
 
-$ts = Get-Date -Format 'yyyyMMdd-HHmmss'
-Copy-Item -LiteralPath $profilePath -Destination "$profilePath.bak-$ts" -Force
-Write-Output "Backed up profile to $profilePath.bak-$ts"
-
-$content = Get-Content -LiteralPath $profilePath -Raw -Encoding UTF8
-if ($null -eq $content) { $content = '' }
-
-function Set-WerProfileRegion([string]$Body, [string]$StartMark, [string]$EndMark, [string]$NewBlock) {
-    if ($Body -notmatch [regex]::Escape($StartMark)) { return $null }
-    $normalized = $NewBlock.TrimEnd("`r", "`n")
-    # Consume trailing newlines after end marker so re-runs are byte-stable.
-    $pattern = '(?s)' + [regex]::Escape($StartMark) + '.*?' + [regex]::Escape($EndMark) + '[\r\n]*'
-    # MatchEvaluator required: string replacement would expand $_ $& $1 inside the block.
-    return [regex]::Replace($Body, $pattern, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $normalized + "`r`n" })
+& $writerPath @writerArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Output "INSTALL-TERMINAL-TOOLS: FAIL: profile block write failed"
+    exit 1
 }
-
-$newContent = Set-WerProfileRegion $content $start $end $block
-if ($null -ne $newContent) {
-    Write-Output "Replaced existing windows-env-rescue block"
-} else {
-    $newContent = Set-WerProfileRegion $content $legacyStart $legacyEnd $block
-    if ($null -ne $newContent) {
-        Write-Output "Migrated legacy terminal-boost block -> windows-env-rescue"
-    } else {
-        $newContent = $content.TrimEnd() + "`n`n" + $block
-        Write-Output "Appended windows-env-rescue block"
-    }
-}
-
-Set-Content -LiteralPath $profilePath -Value $newContent -NoNewline -Encoding UTF8
 
 Write-Output ""
 if ($status -eq 'OK') {

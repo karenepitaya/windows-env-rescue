@@ -29,6 +29,10 @@ $foundationExit = $LASTEXITCODE
 if ($foundationExit -eq 1) {
     Write-Host "foundation FAIL — skipping terminal install; running doctor for summary."
 } else {
+    # Child installers cannot propagate env changes upward: re-read the
+    # persisted PATH so scoop/pwsh installed a moment ago become visible.
+    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('PATH', 'User')
     $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
     $termPath = Join-Path $scripts 'install-terminal-tools.ps1'
     Write-Host ""
