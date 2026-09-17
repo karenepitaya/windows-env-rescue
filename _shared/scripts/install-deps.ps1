@@ -312,7 +312,7 @@ if ($setupOk) {
     Write-Output "What happened: $($_.Exception.Message)"
     Write-Output "Why it matters: Dependencies may be partially installed. Your yazi setup may be incomplete."
     Write-Output "What to do: Re-run this script. If it keeps failing, report this error at:"
-    Write-Output "  https://github.com/karenepitaya/yazi-windows-rescue/issues"
+    Write-Output "  https://github.com/karenepitaya/windows-env-rescue/issues"
     Write-Output "INSTALL-DEPS: PARTIAL"
     exit 1
 }

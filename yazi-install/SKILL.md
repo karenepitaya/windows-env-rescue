@@ -5,7 +5,7 @@ license: MIT
 compatibility: Windows 10/11. Diagnosis runs on any PowerShell; install scripts require PowerShell 7+ (pwsh) and guide the user to it if missing. Needs network access to GitHub (gated up front).
 metadata:
   author: karenepitaya
-  suite: yazi-windows-rescue
+  suite: windows-env-rescue
 ---
 
 # Yazi Install（诊断 + 清理 + 重装 + 验证）

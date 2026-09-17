@@ -5,7 +5,7 @@ license: MIT
 compatibility: Windows 10/11. Runs on any PowerShell (5.1 or 7+).
 metadata:
   author: karenepitaya
-  suite: yazi-windows-rescue
+  suite: windows-env-rescue
 ---
 
 # Yazi Detect（只读诊断）

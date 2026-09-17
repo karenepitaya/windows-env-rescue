@@ -90,6 +90,6 @@ if ($cleanupOk) {
 } catch {
     Write-Output ""
     Write-Output "ERROR: cleanup.ps1 failed unexpectedly: $($_.Exception.Message)"
-    Write-Output "Report at: https://github.com/karenepitaya/yazi-windows-rescue/issues"
+    Write-Output "Report at: https://github.com/karenepitaya/windows-env-rescue/issues"
     exit 1
 }

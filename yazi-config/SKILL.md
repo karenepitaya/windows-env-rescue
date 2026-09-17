@@ -5,7 +5,7 @@ license: MIT
 compatibility: Windows 10/11. Requires a working yazi install (verified up front) and network access to GitHub for plugins/tools. Scripts run on any PowerShell.
 metadata:
   author: karenepitaya
-  suite: yazi-windows-rescue
+  suite: windows-env-rescue
 ---
 
 # Yazi Config（配置 / 美化 / 增强）
