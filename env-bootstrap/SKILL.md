@@ -41,12 +41,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File _shared\scripts\bootstrap.ps1
    - network → 代理后重跑。
    - 任一层 FAIL → 修好该层后重跑 bootstrap 或单跑对应 `/env-*`。
 4. 成功后提示：新窗口生效；可选 `/yazi-install` 装文件管理器。
-5. 单层重跑仍然合法：`/env-foundation`、`/env-terminal`、`/env-doctor`。
+5. 单层重跑仍然合法：`/env-foundation`、`/env-terminal`、`/env-devtools`、`/env-doctor`。
 
 ## 退出语义（引擎）
 
 | 情况 | bootstrap 状态 |
 | --- | --- |
-| 两层 OK 且 doctor 非 RED | OK |
+| 安装层（L0–L2）OK 且 doctor 非 RED | OK |
 | 出现 PARTIAL（无 FAIL） | PARTIAL |
-| 任一层 FAIL 或 doctor RED | FAIL |
+| 任一安装层 FAIL 或 doctor RED | FAIL |

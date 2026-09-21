@@ -87,7 +87,7 @@ foreach ($name in $names) {
 
 ```text
 windows-env-rescue/
-├── env-bootstrap/ env-foundation/ env-terminal/ env-doctor/
+├── env-bootstrap/ env-foundation/ env-terminal/ env-devtools/ env-doctor/
 ├── yazi-detect/ yazi-install/ yazi-config/
 └── _shared/
     ├── manifests/

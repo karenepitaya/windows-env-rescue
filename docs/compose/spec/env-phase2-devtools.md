@@ -1,14 +1,24 @@
 ---
 feature: env-phase2-devtools
-status: in-progress
+status: delivered
 updated: 2026-09-12
 branch: feat/env-phase2
-commits: # filled at delivery
+commits: b035b27..<HEAD>
 ---
 
 # Env Phase 2 — L2 Devtools
 
 ## Report
+
+**What was built** — L2 `env-devtools`：`devtools.toml`（git/nvm/uv required，make/cmake optional）+ `install-devtools.ps1`（引导式 git 身份、nvm LTS、uv Python 3.12、corepack pnpm、`-SkipOptional`）+ doctor L2 行 + bootstrap 扩展为 foundation→terminal→devtools→doctor（任一层 FAIL 跳过更高安装层）。
+
+**Verification** — 本机：脚本 parse 0 错误；`install-devtools -SkipOptional` → `INSTALL-DEVTOOLS: PARTIAL` exit 2（optional 跳过，git 身份/node/pnpm/uv 就绪）；doctor L0/L1 GREEN、L2 YELLOW（make/cmake）、L6 GREEN，exit 0。未跑完整 scoop 装 make（桶更新超时，环境因素）。
+
+**Journey log**
+
+1. `scoop install make` 会触发整桶刷新并可能超时 → `-SkipOptional` + PARTIAL 是诚实路径。
+2. Review C1/C2：git 身份写入必须 re-read 验证；final verify 必须跑命令而非仅 `Get-Command`。
+3. PATH 用 Machine+User 全量重建会丢掉本进程注入的 scoop shims，刷新后要重新拼接。
 
 ## [S1] Problem
 
@@ -64,7 +74,8 @@ Node/pnpm 不作为 scoop `[[tool]]` 条目；由脚本 post 步骤处理（依�
 ```powershell
 -GitName <string> -GitEmail <string>   # 可选
 -UvPython <string>                     # 默认取 manifest
--SkipPnpm                              # 可选跳过
+-SkipPnpm                              # 可选跳过 pnpm
+-SkipOptional                          # 跳过 make/cmake 等 optional（避免 scoop 桶刷新卡住）
 ```
 
 ### Skill `env-devtors` → `env-devtools/SKILL.md`
@@ -102,4 +113,4 @@ Node/pnpm 不作为 scoop `[[tool]]` 条目；由脚本 post 步骤处理（依�
 - [x] T2: `install-devtools.ps1` — acceptance: 可解析执行；已就绪机器幂等；缺 git 身份且未传参时 PARTIAL + 指引；nvm PATH 刷新逻辑存在 (covers: S2; depends: T1)
 - [x] T3: doctor L2 + bootstrap 串联 — acceptance: doctor 含 L2 行；bootstrap 顺序 foundation→terminal→devtools→doctor，FAIL 跳过更高安装层 (covers: S2; depends: T2)
 - [x] T4: validate-release + README + DESIGN — acceptance: 校验含新文件；文档描述 L2 (covers: S2; depends: T1)
-- [ ] T5: 端到端验证 — acceptance: 本机 doctor L2 状态正确；install-devtools 幂等或如实 PARTIAL/FAIL；结果写入 Report (covers: S2; depends: T3)
+- [x] T5: 端到端验证 — acceptance: 本机 doctor L2 状态正确；install-devtools 幂等或如实 PARTIAL/FAIL；结果写入 Report (covers: S2; depends: T3)

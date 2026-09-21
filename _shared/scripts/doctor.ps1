@@ -122,10 +122,14 @@ try {
                 [Environment]::GetEnvironmentVariable('PATH', 'User')
     foreach ($key in @('NVM_HOME', 'NVM_SYMLINK')) {
         $val = [Environment]::GetEnvironmentVariable($key, 'User')
+        if (-not $val) { $val = [Environment]::GetEnvironmentVariable($key, 'Machine') }
         if ($val) { Set-Item -Path "env:$key" -Value $val -ErrorAction SilentlyContinue }
-        $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'User')
-        if ($link -and $env:PATH -notlike "*$link*") { $env:PATH = "$link;$env:PATH" }
     }
+    $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'User')
+    if (-not $link) { $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'Machine') }
+    if ($link -and $env:PATH -notlike "*$link*") { $env:PATH = "$link;$env:PATH" }
+    $shims = Join-Path $env:USERPROFILE 'scoop\shims'
+    if ((Test-Path $shims) -and $env:PATH -notlike "*$shims*") { $env:PATH = "$shims;$env:PATH" }
 } catch { }
 
 $ds = Get-ManifestLayerState $devtoolsPath

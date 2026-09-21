@@ -47,7 +47,7 @@ Windows 技术用户分层装机 / 环境迁移 skill 套件。一期实现以 `
 ```text
 L0  env-foundation   scoop · pwsh7 · 执行策略 · UTF-8 · PATH/环境变量卫生
 L1  env-terminal     WT · 字体 · starship · eza/bat/fzf/zoxide · profile 标记块
-L2  env-devtools     git required · nvm+Node LTS · uv+Python · pnpm · make/cmake  [phase2]
+L2  env-devtools     git required · nvm+Node LTS · uv+Python · pnpm · make/cmake  [已实现 phase2]
 L3  env-ai-coding    Claude Code · Codex · Kimi Code · …          [二期]
 L4  env-apps         VS Code · 浏览器等 GUI                       [二期]
 L5  env-dotfiles     本机 profile/编辑器/git 配置 导出·导入         [二期，跨机同步三期]
@@ -68,10 +68,9 @@ L6  yazi-*           文件管理（detect / install / config，保留）    [�
 
 ### 2.2 明确推迟
 
-- L2–L5 功能实现（只预留目录与 manifest 空壳）
-- 一键 `/bootstrap` 编排入口
+- L3–L5 功能实现（ai-coding / apps / dotfiles；L2 已交付）
 - 跨机 dotfiles 同步（网盘 / git remote）
-- 非 scoop 安装路径（winget 仅作 GUI 二期备选，不进一期）
+- 非 scoop 安装路径（winget 仅作 GUI 二期备选）
 
 ## 3. 交互协议（全套件强制）
 

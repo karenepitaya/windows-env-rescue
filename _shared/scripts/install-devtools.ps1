@@ -41,9 +41,19 @@ function Set-WerUtf8 {
 }
 
 function Update-WerPathFromUserEnv {
+    # Rebuild from persisted env, then re-append anything this process already had
+    # that looks like scoop/nvm (Machine+User alone can drop session shims).
     $machine = [Environment]::GetEnvironmentVariable('PATH', 'Machine')
     $user = [Environment]::GetEnvironmentVariable('PATH', 'User')
-    $env:PATH = @($machine, $user) -join ';'
+    $base = @($machine, $user) -join ';'
+    $extra = @()
+    foreach ($seg in ($env:PATH -split ';')) {
+        if (-not $seg) { continue }
+        if ($seg -match 'scoop\\shims' -or $seg -match 'nvm' -or $seg -match 'nodejs') {
+            if ($base -notlike "*$seg*") { $extra += $seg }
+        }
+    }
+    $env:PATH = (@($extra) + @($base)) -join ';'
     foreach ($key in @('NVM_HOME', 'NVM_SYMLINK', 'SCOOP', 'UV')) {
         $val = [Environment]::GetEnvironmentVariable($key, 'User')
         if (-not $val) { $val = [Environment]::GetEnvironmentVariable($key, 'Machine') }
@@ -144,7 +154,15 @@ foreach ($tool in $manifest.Tools) {
         if ($status -eq 'OK') { $status = 'PARTIAL' }
         continue
     }
-    # Optional packages may trigger a full scoop bucket refresh; required still installs.
+    # Ensure main bucket once before any install (clean machines)
+    if (-not (Get-Variable -Name werBucketChecked -Scope Script -ErrorAction SilentlyContinue)) {
+        $buckets = @(scoop bucket list 2>$null | Out-String)
+        if (($buckets -join "`n") -notmatch 'main') {
+            Write-Output "Adding scoop bucket 'main'..."
+            scoop bucket add main
+        }
+        $script:werBucketChecked = $true
+    }
     scoop install $pkg
     if ($LASTEXITCODE -ne 0) {
         if ($req) { $requiredFail += $bin }
@@ -269,10 +287,18 @@ if (-not [string]::IsNullOrWhiteSpace($gitName) -and -not [string]::IsNullOrWhit
     Write-Output "git identity: $gitName <$gitEmail>"
 } elseif (-not [string]::IsNullOrWhiteSpace($GitName) -and -not [string]::IsNullOrWhiteSpace($GitEmail)) {
     git config --global user.name $GitName
+    $nameCode = $LASTEXITCODE
     git config --global user.email $GitEmail
+    $emailCode = $LASTEXITCODE
     $gitName = git config --global user.name
     $gitEmail = git config --global user.email
-    Write-Output "git identity set: $gitName <$gitEmail>"
+    if ($nameCode -ne 0 -or $emailCode -ne 0 -or
+        [string]::IsNullOrWhiteSpace($gitName) -or [string]::IsNullOrWhiteSpace($gitEmail)) {
+        Write-Output "git identity write failed (nameCode=$nameCode emailCode=$emailCode name='$gitName' email='$gitEmail')"
+        if ($status -eq 'OK') { $status = 'PARTIAL' }
+    } else {
+        Write-Output "git identity set: $gitName <$gitEmail>"
+    }
 } else {
     Write-Output "git identity missing."
     Write-Output "  git config --global user.name  \"Your Name\""
@@ -281,15 +307,30 @@ if (-not [string]::IsNullOrWhiteSpace($gitName) -and -not [string]::IsNullOrWhit
     if ($status -eq 'OK') { $status = 'PARTIAL' }
 }
 
-# Final required verify
+# Final required verify — run real commands, not mere presence
 $fail = @()
-if (-not (Test-WerVerify 'git --version')) { $fail += 'git' }
-if (-not (Test-WerCmd 'nvm')) { $fail += 'nvm' }
-if (-not (Test-WerCmd 'node')) { $fail += 'node' }
-if (-not (Test-WerCmd 'uv')) { $fail += 'uv' }
+foreach ($tool in $manifest.Tools) {
+    if (-not [bool]$tool['required']) { continue }
+    $bin = $tool['binary']
+    $verify = $tool['verify']
+    if (-not $bin) { continue }
+    $ok = Test-WerCmd $bin
+    if ($ok -and $verify) { $ok = Test-WerVerify $verify }
+    if (-not $ok) { $fail += $bin }
+}
+if (-not (Test-WerCmd 'node') -or -not (Test-WerVerify 'node --version')) { $fail += 'node' }
 if ($fail.Count -gt 0) {
     Write-Output "INSTALL-DEVTOOLS: FAIL: verify failed: $($fail -join ', ')"
     exit 1
+}
+
+# Re-read identity once more — OK requires a usable git identity or explicit PARTIAL
+$gitName = $null; $gitEmail = $null
+try { $gitName = (git config --global user.name 2>$null) } catch { }
+try { $gitEmail = (git config --global user.email 2>$null) } catch { }
+if ([string]::IsNullOrWhiteSpace($gitName) -or [string]::IsNullOrWhiteSpace($gitEmail)) {
+    Write-Output "git identity still missing after setup"
+    if ($status -eq 'OK') { $status = 'PARTIAL' }
 }
 
 Write-Output ""
