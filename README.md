@@ -8,7 +8,7 @@
 - **L1 终端**：现代 CLI（starship/eza/bat/fzf/zoxide…）+ `$PROFILE` 标记块
 - **L2 开发底座**：git、nvm+Node LTS、uv+Python、pnpm、make/cmake
 - **L3 AI 编码 CLI**：探测后安装 Claude Code + Pi（其余只观察）
-- **L4 应用**：scoop extras：VS Code、cc-switch、ChatGPT（商店路径会如实警告）
+- **L4 必要应用**：仅 VS Code + cc-switch（scoop）；其余 GUI 用户自装
 - **体检**：分层 GREEN / YELLOW / RED
 - **总入口**：一条 bootstrap（L0→L4→doctor）
 - **文件管理层**：Yazi 诊断 / 重装 / 配置（保留）
@@ -48,7 +48,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\_shared\scripts\bootstrap.ps1
 | `/env-terminal` | L1 | 现代 CLI + profile 标记块 | 会 |
 | `/env-devtools` | L2 | git/nvm+node/uv+python/pnpm/make/cmake | 会 |
 | `/env-ai-coding` | L3 | Claude Code + Pi（探测优先；Codex/Kimi 只观察） | 会 |
-| `/env-apps` | L4 | VS Code / cc-switch / ChatGPT（scoop extras） | 会 |
+| `/env-apps` | L4 | 仅必要 GUI：VS Code、cc-switch（其余自装） | 会 |
 | `/env-doctor` | 横切 | 分层只读体检 | 不会 |
 | `/yazi-detect` | L6 | Yazi 只读诊断 | 不会 |
 | `/yazi-install` | L6 | Yazi 清理重装 | 会 |
@@ -87,7 +87,7 @@ foreach ($name in $names) {
 - `terminal.toml` — starship（required）+ 现代 CLI（optional）
 - `devtools.toml` — git/nvm/uv（required）、make/cmake（optional）；Node 走 nvm，Python 走 uv
 - `ai-coding.toml` — Claude Code + Pi（可装）；codex/kimi 仅观察
-- `apps.toml` — vscode / cc-switch / chatgpt（scoop extras）
+- `apps.toml` — 仅必要 GUI：vscode / cc-switch
 
 ## 维护者
 

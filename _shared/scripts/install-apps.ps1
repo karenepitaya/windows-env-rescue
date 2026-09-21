@@ -1,17 +1,16 @@
 <#
 .SYNOPSIS
-  windows-env-rescue — L4 GUI apps installer (scoop extras).
+  windows-env-rescue — L4 necessary GUI apps (scoop extras).
 
 .DESCRIPTION
-  Detect-first scoop installs for curated apps: vscode, cc-switch, chatgpt.
+  Curated minimal set only (vscode, cc-switch). Other GUI apps are user-owned.
   Status: INSTALL-APPS: OK | PARTIAL | FAIL: <reason>
   Exit: 0 OK, 2 PARTIAL, 1 FAIL.
 #>
 [CmdletBinding()]
 param(
     [switch]$SkipVscode,
-    [switch]$SkipCcSwitch,
-    [switch]$SkipChatgpt
+    [switch]$SkipCcSwitch
 )
 
 $ErrorActionPreference = 'Continue'
@@ -63,6 +62,7 @@ $shared = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'Import-WerManifest.ps1')
 $manifest = Import-WerManifest -Path (Join-Path $shared 'manifests\apps.toml')
 Write-Output "Manifest: $($manifest.Name)"
+Write-Output "Policy: only necessary GUI apps; others are installed by the user."
 
 if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
     Write-Output "scoop missing — run /env-foundation first."
@@ -91,9 +91,7 @@ foreach ($tool in $manifest.Tools) {
     $verify = $tool['verify']
     if (-not $pkg) { continue }
 
-    $skip = ($id -eq 'vscode' -and $SkipVscode) -or
-            ($id -eq 'cc-switch' -and $SkipCcSwitch) -or
-            ($id -eq 'chatgpt' -and $SkipChatgpt)
+    $skip = ($id -eq 'vscode' -and $SkipVscode) -or ($id -eq 'cc-switch' -and $SkipCcSwitch)
     if ($skip) {
         Write-Output "SKIP    $pkg"
         if ($req -and $status -eq 'OK') { $status = 'PARTIAL' }
@@ -111,10 +109,6 @@ foreach ($tool in $manifest.Tools) {
     }
     if (-not $verify -and ($binOk -or $scoopOk)) {
         Write-Output "OK      $pkg (verify limited; scoop/bin present)"
-        if ($id -eq 'chatgpt') {
-            Write-Output "  note: some extras chatgpt manifests may still launch Store/web installer."
-            Write-Output "        Confirm the app appears in Start Menu if you must avoid Microsoft Store."
-        }
         continue
     }
 
@@ -140,14 +134,11 @@ foreach ($tool in $manifest.Tools) {
         if ($req) { $failRequired += $pkg } elseif ($status -eq 'OK') { $status = 'PARTIAL' }
     } else {
         Write-Output "  installed OK: $pkg"
-        if ($id -eq 'chatgpt' -and -not $verify) {
-            Write-Output "  note: chatgpt verify limited — check Start Menu; Store redirect possible."
-            if ($status -eq 'OK') { $status = 'PARTIAL' }
-        }
     }
 }
 
 Write-Output ""
+Write-Output "Note: browsers, ChatGPT, and other GUI apps are intentionally NOT auto-installed."
 if ($failRequired.Count -gt 0) {
     Write-Output "INSTALL-APPS: FAIL: required missing: $($failRequired -join ', ')"
     exit 1

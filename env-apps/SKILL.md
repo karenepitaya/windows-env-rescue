@@ -1,6 +1,6 @@
 ---
 name: env-apps
-description: Install curated Windows GUI apps for windows-env-rescue via Scoop extras — VS Code, cc-switch, ChatGPT (non-Store path when the manifest allows). Detect-first, skip if present. Use when the user wants 装应用 / VS Code / cc-switch / ChatGPT desktop via scoop. Does not sign in to apps.
+description: Install only necessary Windows GUI apps for windows-env-rescue via Scoop extras — currently VS Code and cc-switch. Detect-first. Other software (browsers, ChatGPT, chat apps) is intentionally left to the user. Use when the user wants the curated necessary GUI set, not a full app catalog.
 license: MIT
 compatibility: Windows 10/11. Requires scoop + extras bucket.
 metadata:
@@ -9,34 +9,32 @@ metadata:
   layer: L4
 ---
 
-# env-apps（应用层）
+# env-apps（必要应用）
 
-L4 钦定清单（scoop **extras**）：
+**原则**：本套件核心是**环境配置**。GUI 软件默认由用户自装；L4 **只装必要项**。
 
-| 包 | 二进制/说明 |
+| 包 | 说明 |
 | --- | --- |
-| `vscode` | `code` |
+| `vscode` | 编辑器（`code`） |
 | `cc-switch` | AI CLI 供应商切换 |
-| `chatgpt` | GUI；**下载可达数百 MB**，可能超时；部分清单可能仍调用商店/在线安装 |
 
-已装则跳过；不代登录。
+**明确不装**：ChatGPT、浏览器、通讯软件等——需要时用户自行 `scoop install` / 官网 / 商店。
 
 ## 裸跑
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File _shared\scripts\install-apps.ps1
-# 可选：-SkipVscode / -SkipCcSwitch / -SkipChatgpt
+# -SkipVscode / -SkipCcSwitch
 ```
 
 状态词：`INSTALL-APPS: OK` / `PARTIAL` / `FAIL: <reason>`。
 
 ## Agent 流程
 
-1. 说明 scoop 优先与三件清单。
-2. 运行脚本；PARTIAL 常见原因：chatgpt verify 受限 / 商店转发提示。
-3. 提示用户检查开始菜单；需要严格非商店时，可改用 winget/官网并告知本 skill 默认走 scoop。
-4. 不在本层装浏览器/通讯软件（未钦定）。
+1. 说明「只装必要 GUI」原则。
+2. 运行脚本；已装跳过。
+3. 用户要装其他应用 → 指导其自行安装，**不要**扩 manifest 除非用户明确要求改钦定清单。
 
 ## Manifest
 
-`_shared/manifests/apps.toml`
+`_shared/manifests/apps.toml`（默认仅两项；加包等于改产品钦定清单）。

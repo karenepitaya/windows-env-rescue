@@ -1,6 +1,9 @@
 schema = 1
 name = "apps"
 
+# Philosophy: GUI apps are user-owned; this layer only installs curated
+# "necessary" tools. Do not add ChatGPT/etc. without an explicit decision.
+
 [[tool]]
 id = "vscode"
 scoop = "vscode"
@@ -14,13 +17,5 @@ id = "cc-switch"
 scoop = "cc-switch"
 bucket = "extras"
 binary = "cc-switch"
-required = true
-verify = ""
-
-[[tool]]
-id = "chatgpt"
-scoop = "chatgpt"
-bucket = "extras"
-binary = "ChatGPT"
 required = true
 verify = ""

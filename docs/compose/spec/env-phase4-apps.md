@@ -10,15 +10,14 @@ commits: d1bac3d..4c31d15
 
 ## Report
 
-**What was built** — L4 `env-apps`：`apps.toml`（vscode / cc-switch / chatgpt，scoop extras）+ `install-apps.ps1`（探测优先、确保 extras、GUI verify 有限时如实输出）+ doctor L4 + bootstrap 扩到 apps。
+**What was built** — L4 `env-apps` **必要 GUI 最小集**：仅 `vscode` + `cc-switch`（scoop extras）。产品原则：**套件核心是环境配置**；ChatGPT/浏览器等 GUI 由用户自装，不进钦定清单。
 
-**Verification** — parse 0 错误；本机：`code` 已在 PATH（OK）；`cc-switch` scoop/bin 存在 → `OK (verify limited)`；`chatgpt` 清单存在但 **~786MB** 下载超时未完成 → doctor **L4 RED missing: chatgpt**（诚实，非谎报）。scoop 桶更新会拉长首次安装。
+**Verification** — `code` 在 PATH；`cc-switch` scoop/bin 存在 → OK；doctor L4 仅检查这两项。已从清单移除 chatgpt（大体积/商店路径，且非必要）。
 
 **Journey log**
 
-1. 三件套均在 scoop extras：`vscode`、`cc-switch`、`chatgpt`。
-2. ChatGPT scoop 可能是大体积 MSIX/在线安装器；严格「非商店」需用户确认开始菜单产物。
-3. GUI 无 `--version` 时用 scoop list/bin 存在性，状态可为 OK + verify limited 或 PARTIAL。
+1. 初版误把 ChatGPT 列为 required → 用户纠正：软件默认用户自装，除必要外。
+2. L4 钦定清单变更 = 产品决策，必须改 `apps.toml`，不能靠 skill 临场加包。
 
 ## [S1] Problem
 
@@ -31,7 +30,7 @@ L0–L3 装好终端/开发/AI CLI 后，新机仍缺日常 GUI。用户钦定 L
 | 轴 | 决定 |
 | --- | --- |
 | 层 | L4 `env-apps` |
-| 清单 | `vscode`、`cc-switch`、`chatgpt`（均为 scoop **extras**） |
+| 清单 | **仅必要**：`vscode`、`cc-switch`（scoop **extras**）。ChatGPT 等由用户自装 |
 | 策略 | 探测 → 缺则 `scoop install`；确保 `extras` bucket |
 | 商店 | ChatGPT 若 scoop 清单仍是 Store 转发安装器 → **如实 PARTIAL/警告**，不谎报「已脱离商店」 |
 | 认证/账号 | 脚本不登录 |
