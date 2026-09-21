@@ -3,7 +3,7 @@ feature: env-phase2-devtools
 status: delivered
 updated: 2026-09-12
 branch: feat/env-phase2
-commits: b035b27..<HEAD>
+commits: b035b27..b762670
 ---
 
 # Env Phase 2 — L2 Devtools
