@@ -41,15 +41,18 @@ $required = @(
     "env-terminal\SKILL.md",
     "env-doctor\SKILL.md",
     "env-bootstrap\SKILL.md",
+    "env-devtools\SKILL.md",
     "_shared\scripts\apply-config.ps1",
     "_shared\scripts\profile-block.ps1",
     "_shared\scripts\install-terminal-tools.ps1",
     "_shared\scripts\install-foundation.ps1",
+    "_shared\scripts\install-devtools.ps1",
     "_shared\scripts\doctor.ps1",
     "_shared\scripts\bootstrap.ps1",
     "_shared\scripts\Import-WerManifest.ps1",
     "_shared\manifests\foundation.toml",
     "_shared\manifests\terminal.toml",
+    "_shared\manifests\devtools.toml",
     "_shared\config\keymap-zh.toml",
     "_shared\config\wt-keybindings.json",
     "_shared\references\tool-catalog.md"
@@ -160,6 +163,21 @@ if (Test-Path $foundationManifestPath) {
     Pass "foundation manifest present"
 } else {
     Fail "missing foundation manifest"
+}
+
+$devtoolsManifestPath = Join-Path $sharedDir "manifests\devtools.toml"
+if (Test-Path $devtoolsManifestPath) {
+    Pass "devtools manifest present"
+    $devtoolsManifest = Get-Content $devtoolsManifestPath -Raw -Encoding UTF8
+    foreach ($package in "git", "nvm", "uv") {
+        if ($devtoolsManifest -match ('(?m)^scoop\s*=\s*"' + [regex]::Escape($package) + '"')) {
+            Pass "devtools tool mapping present: $package"
+        } else {
+            Fail "devtools tool mapping missing: $package"
+        }
+    }
+} else {
+    Fail "missing devtools manifest"
 }
 
 # Validate profile-block.ps1 has correct starship-before-zoxide order

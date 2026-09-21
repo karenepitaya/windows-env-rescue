@@ -1,6 +1,6 @@
 ---
 name: env-bootstrap
-description: One-shot Windows new-machine bootstrap for windows-env-rescue — runs foundation, then terminal, then doctor. Use when the user wants 新机装机 / bootstrap / 一条龙配置到终端就绪. FAIL stops later installs; PARTIAL continues. Prefer this over manually chaining skills when the goal is a fresh daily-driver terminal.
+description: One-shot Windows new-machine bootstrap for windows-env-rescue — runs foundation, terminal, devtools, then doctor. Use when the user wants 新机装机 / bootstrap / 一条龙. FAIL stops later install layers; PARTIAL continues.
 license: MIT
 compatibility: Windows 10/11. Prefers PowerShell 7+ after foundation installs it.
 metadata:
@@ -15,9 +15,10 @@ metadata:
 
 1. `install-foundation.ps1`（L0）
 2. `install-terminal-tools.ps1`（L1）
-3. `doctor.ps1`（汇总验收）
+3. `install-devtools.ps1`（L2）
+4. `doctor.ps1`（汇总验收）
 
-一期完成线：**终端就绪**（L0+L1 无 RED）。
+完成线：L0–L2 无 RED（git 身份等可为 YELLOW）。
 
 ## Language
 
@@ -33,11 +34,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File _shared\scripts\bootstrap.ps1
 
 ## Agent 流程
 
-1. 两句话说明范围：装 scoop/pwsh7 → 现代终端工具 + profile → doctor 验收。不做 git 身份、语言运行时、GUI 应用（二期）。
-2. 直接跑 bootstrap 脚本，不要手写串联。
-3. 失败时：
-   - network → 代理后重跑 bootstrap 或单跑 foundation。
-   - terminal required（starship）→ 修网络/scoop 后重跑。
+1. 说明范围：scoop/pwsh7 → 终端工具 + profile → git/nvm/uv/pnpm → doctor。
+2. 直接跑 bootstrap 脚本。
+3. 若 bootstrap 未收集 git 身份，跑完后可单独 `/env-devtools` 补引导。
+4. 失败时：
+   - network → 代理后重跑。
+   - 任一层 FAIL → 修好该层后重跑 bootstrap 或单跑对应 `/env-*`。
 4. 成功后提示：新窗口生效；可选 `/yazi-install` 装文件管理器。
 5. 单层重跑仍然合法：`/env-foundation`、`/env-terminal`、`/env-doctor`。
 

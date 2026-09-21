@@ -2,15 +2,16 @@
 
 一套面向 Windows 技术用户的分层装机 / 环境迁移 Claude Code skills（PowerShell 引擎可独立运行）。
 
-当前一期覆盖：
+当前覆盖：
 
 - **L0 地基**：Scoop、PowerShell 7、执行策略、网络闸门
 - **L1 终端**：现代 CLI（starship/eza/bat/fzf/zoxide…）+ `$PROFILE` 标记块
+- **L2 开发底座**：git、nvm+Node LTS、uv+Python、pnpm、make/cmake
 - **体检**：分层 GREEN / YELLOW / RED
-- **总入口**：一条 bootstrap 到「终端就绪」
+- **总入口**：一条 bootstrap（L0→L2→doctor）
 - **文件管理层**：Yazi 诊断 / 重装 / 配置（保留）
 
-设计说明见 [DESIGN.md](DESIGN.md) 与 [docs/compose/spec/env-phase1.md](docs/compose/spec/env-phase1.md)。
+设计说明见 [DESIGN.md](DESIGN.md)、[docs/compose/spec/env-phase1.md](docs/compose/spec/env-phase1.md) 与 [env-phase2-devtools.md](docs/compose/spec/env-phase2-devtools.md)。
 
 ## 前置
 
@@ -34,15 +35,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\_shared\scripts\bootstrap.ps1
 /env-bootstrap
 ```
 
-完成后新开终端窗口；`/env-doctor` 应显示 L0/L1 非 RED。
+完成后新开终端窗口；`/env-doctor` 应显示 L0/L1/L2 非 RED（git 身份等可为 YELLOW）。
 
 ## Skill 一览
 
 | 命令 | 层 | 作用 | 改系统？ |
 | --- | --- | --- | --- |
-| `/env-bootstrap` | 编排 | foundation → terminal → doctor | 会 |
+| `/env-bootstrap` | 编排 | foundation → terminal → devtools → doctor | 会 |
 | `/env-foundation` | L0 | scoop + pwsh7 + 策略 + 网络门 | 会 |
 | `/env-terminal` | L1 | 现代 CLI + profile 标记块 | 会 |
+| `/env-devtools` | L2 | git/nvm+node/uv+python/pnpm/make/cmake | 会 |
 | `/env-doctor` | 横切 | 分层只读体检 | 不会 |
 | `/yazi-detect` | L6 | Yazi 只读诊断 | 不会 |
 | `/yazi-install` | L6 | Yazi 清理重装 | 会 |
@@ -56,7 +58,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\_shared\scripts\bootstrap.ps1
 $src = "path\to\windows-env-rescue"  # 本仓库克隆路径
 $dst = "$env:USERPROFILE\.claude\skills"
 $names = @(
-  "env-bootstrap", "env-foundation", "env-terminal", "env-doctor",
+  "env-bootstrap", "env-foundation", "env-terminal", "env-devtools", "env-doctor",
   "yazi-detect", "yazi-install", "yazi-config", "_shared"
 )
 foreach ($name in $names) {
@@ -79,6 +81,7 @@ foreach ($name in $names) {
 
 - `foundation.toml` — pwsh（required）、git（optional）
 - `terminal.toml` — starship（required）+ 现代 CLI（optional）
+- `devtools.toml` — git/nvm/uv（required）、make/cmake（optional）；Node 走 nvm，Python 走 uv
 
 ## 维护者
 

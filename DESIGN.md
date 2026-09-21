@@ -47,7 +47,7 @@ Windows 技术用户分层装机 / 环境迁移 skill 套件。一期实现以 `
 ```text
 L0  env-foundation   scoop · pwsh7 · 执行策略 · UTF-8 · PATH/环境变量卫生
 L1  env-terminal     WT · 字体 · starship · eza/bat/fzf/zoxide · profile 标记块
-L2  env-devtools     git · node · python(uv) · 常用 CLI          [二期]
+L2  env-devtools     git required · nvm+Node LTS · uv+Python · pnpm · make/cmake  [phase2]
 L3  env-ai-coding    Claude Code · Codex · Kimi Code · …          [二期]
 L4  env-apps         VS Code · 浏览器等 GUI                       [二期]
 L5  env-dotfiles     本机 profile/编辑器/git 配置 导出·导入         [二期，跨机同步三期]

@@ -114,6 +114,50 @@ if ($ts.State -ne 'UNKNOWN') {
 }
 Write-Layer 'L1' 'terminal' $ts.State $ts.Detail
 
+# L2 devtools
+$devtoolsPath = Join-Path $shared 'manifests\devtools.toml'
+# Refresh PATH/nvm so doctor sees freshly installed tools in-session
+try {
+    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('PATH', 'User')
+    foreach ($key in @('NVM_HOME', 'NVM_SYMLINK')) {
+        $val = [Environment]::GetEnvironmentVariable($key, 'User')
+        if ($val) { Set-Item -Path "env:$key" -Value $val -ErrorAction SilentlyContinue }
+        $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'User')
+        if ($link -and $env:PATH -notlike "*$link*") { $env:PATH = "$link;$env:PATH" }
+    }
+} catch { }
+
+$ds = Get-ManifestLayerState $devtoolsPath
+$extra = @()
+if ($ds.State -ne 'UNKNOWN') {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        $extra += 'node missing (nvm channel)'
+        if ($ds.State -eq 'GREEN') { $ds = @{ State = 'RED'; Detail = ($ds.Detail + '; node missing') } }
+        elseif ($ds.State -eq 'YELLOW') { $ds = @{ State = 'RED'; Detail = ($ds.Detail + '; node missing') } }
+    }
+    $gName = $null; $gEmail = $null
+    try { $gName = (git config --global user.name 2>$null) } catch { }
+    try { $gEmail = (git config --global user.email 2>$null) } catch { }
+    if (-not [string]::IsNullOrWhiteSpace($gName) -and -not [string]::IsNullOrWhiteSpace($gEmail)) {
+        $extra += "git id $gName"
+    } else {
+        $extra += 'git identity missing'
+        if ($ds.State -eq 'GREEN') { $ds = @{ State = 'YELLOW'; Detail = ($ds.Detail + '; git identity missing') } }
+        elseif ($ds.State -ne 'RED' -and $ds.State -ne 'UNKNOWN') {
+            $ds = @{ State = 'YELLOW'; Detail = ($ds.Detail + '; git identity missing') }
+        } elseif ($ds.State -eq 'RED') {
+            $ds.Detail += '; git identity missing'
+        }
+    }
+    if ($extra.Count -gt 0 -and $ds.State -eq 'GREEN') {
+        $ds = @{ State = 'GREEN'; Detail = (($ds.Detail + '; ' + ($extra -join '; '))) }
+    } elseif ($extra.Count -gt 0 -and $ds.Detail -notmatch 'node missing|git identity') {
+        $ds.Detail += '; ' + ($extra -join '; ')
+    }
+}
+Write-Layer 'L2' 'devtools' $ds.State $ds.Detail
+
 # L6 yazi (optional informational)
 $yaziCmd = Get-Command yazi -ErrorAction SilentlyContinue
 if ($yaziCmd) {

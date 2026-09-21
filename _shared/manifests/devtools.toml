@@ -1,0 +1,45 @@
+schema = 1
+name = "devtools"
+
+# Node is provided by nvm-windows (post steps), not by scoop nodejs.
+
+[[tool]]
+id = "git"
+scoop = "git"
+binary = "git"
+required = true
+verify = "git --version"
+
+[[tool]]
+id = "nvm"
+scoop = "nvm"
+binary = "nvm"
+required = true
+verify = "nvm version"
+
+[[tool]]
+id = "uv"
+scoop = "uv"
+binary = "uv"
+required = true
+verify = "uv --version"
+
+[[tool]]
+id = "make"
+scoop = "make"
+binary = "make"
+required = false
+verify = "make --version"
+
+[[tool]]
+id = "cmake"
+scoop = "cmake"
+binary = "cmake"
+required = false
+verify = "cmake --version"
+
+[post]
+nvm_channel = "lts"
+uv_python = "3.12"
+corepack = true
+pnpm = true

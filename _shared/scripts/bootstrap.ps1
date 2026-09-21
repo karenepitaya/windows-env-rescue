@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-  windows-env-rescue — L0+L1 bootstrap orchestrator.
+  windows-env-rescue — L0–L2 bootstrap orchestrator.
 
 .DESCRIPTION
-  Runs: install-foundation.ps1 -> install-terminal-tools.ps1 -> doctor.ps1
-  FAIL stops later install layers; PARTIAL continues.
+  Runs: install-foundation.ps1 -> install-terminal-tools.ps1 -> install-devtools.ps1 -> doctor.ps1
+  Any install-layer FAIL skips higher install layers; doctor always runs last.
   Exit codes:
     0 = all install layers OK and doctor not RED (YELLOW allowed)
     2 = some install layer PARTIAL (no FAIL)
@@ -15,50 +15,70 @@ $ErrorActionPreference = 'Continue'
 $scripts = $PSScriptRoot
 
 Write-Host "########## windows-env-rescue bootstrap ##########"
-Write-Host "Order: foundation -> terminal -> doctor"
+Write-Host "Order: foundation -> terminal -> devtools -> doctor"
 
 $foundationExit = 0
 $terminalExit = 0
+$devtoolsExit = 0
 $doctorExit = 0
+$skipRest = $false
+
+function Invoke-WerInstaller([string]$FileName) {
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    $path = Join-Path $scripts $FileName
+    Write-Host ""
+    if ($pwsh) {
+        Write-Host ">>>>>> $FileName (pwsh)"
+        & pwsh -NoProfile -File $path | Out-Host
+    } else {
+        Write-Host ">>>>>> $FileName"
+        & $path | Out-Host
+    }
+    return $LASTEXITCODE
+}
+
+function Update-WerBootstrapPath {
+    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('PATH', 'User')
+}
 
 Write-Host ""
 Write-Host ">>>>>> install-foundation.ps1"
 & (Join-Path $scripts 'install-foundation.ps1') | Out-Host
 $foundationExit = $LASTEXITCODE
-
 if ($foundationExit -eq 1) {
-    Write-Host "foundation FAIL — skipping terminal install; running doctor for summary."
-} else {
-    # Child installers cannot propagate env changes upward: re-read the
-    # persisted PATH so scoop/pwsh installed a moment ago become visible.
-    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
-                [Environment]::GetEnvironmentVariable('PATH', 'User')
-    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-    $termPath = Join-Path $scripts 'install-terminal-tools.ps1'
-    Write-Host ""
-    if ($pwsh) {
-        Write-Host ">>>>>> install-terminal-tools.ps1 (pwsh)"
-        & pwsh -NoProfile -File $termPath | Out-Host
-    } else {
-        Write-Host ">>>>>> install-terminal-tools.ps1"
-        & $termPath | Out-Host
+    $skipRest = $true
+    Write-Host "foundation FAIL — skipping terminal/devtools; running doctor."
+}
+
+if (-not $skipRest) {
+    Update-WerBootstrapPath
+    $terminalExit = Invoke-WerInstaller 'install-terminal-tools.ps1'
+    if ($terminalExit -eq 1) {
+        $skipRest = $true
+        Write-Host "terminal FAIL — skipping devtools; running doctor."
     }
-    $terminalExit = $LASTEXITCODE
+}
+
+if (-not $skipRest) {
+    Update-WerBootstrapPath
+    $devtoolsExit = Invoke-WerInstaller 'install-devtools.ps1'
 }
 
 Write-Host ""
 Write-Host ">>>>>> doctor.ps1"
+Update-WerBootstrapPath
 & (Join-Path $scripts 'doctor.ps1') | Out-Host
 $doctorExit = $LASTEXITCODE
 
 Write-Host ""
-Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit doctor=$doctorExit"
+Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit devtools=$devtoolsExit doctor=$doctorExit"
 
-if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $doctorExit -eq 1) {
+if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $devtoolsExit -eq 1 -or $doctorExit -eq 1) {
     Write-Host "BOOTSTRAP: FAIL"
     exit 1
 }
-if ($foundationExit -eq 2 -or $terminalExit -eq 2) {
+if ($foundationExit -eq 2 -or $terminalExit -eq 2 -or $devtoolsExit -eq 2) {
     Write-Host "BOOTSTRAP: PARTIAL"
     exit 2
 }
