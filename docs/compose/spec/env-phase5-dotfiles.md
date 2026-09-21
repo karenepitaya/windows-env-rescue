@@ -3,7 +3,7 @@ feature: env-phase5-dotfiles
 status: delivered
 updated: 2026-09-12
 branch: feat/env-phase5
-commits: c21ac7f..HEAD
+commits: c21ac7f..02618d9
 ---
 
 # Env Phase 5 — L5 Dotfiles (local export/import)
