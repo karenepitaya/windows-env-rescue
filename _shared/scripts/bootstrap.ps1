@@ -3,7 +3,7 @@
   windows-env-rescue — L0–L3 bootstrap orchestrator.
 
 .DESCRIPTION
-  Order: foundation -> terminal -> devtools -> ai-coding -> doctor
+  Order: foundation -> terminal -> devtools -> ai-coding -> apps -> doctor
   Any install-layer FAIL skips higher install layers; doctor always runs last.
   Exit codes:
     0 = all install layers OK and doctor not RED (YELLOW allowed)
@@ -15,12 +15,13 @@ $ErrorActionPreference = 'Continue'
 $scripts = $PSScriptRoot
 
 Write-Host "########## windows-env-rescue bootstrap ##########"
-Write-Host "Order: foundation -> terminal -> devtools -> ai-coding -> doctor"
+Write-Host "Order: foundation -> terminal -> devtools -> ai-coding -> apps -> doctor"
 
 $foundationExit = 0
 $terminalExit = 0
 $devtoolsExit = 0
 $aiExit = 0
+$appsExit = 0
 $doctorExit = 0
 $skipRest = $false
 
@@ -86,6 +87,15 @@ if (-not $skipRest) {
 if (-not $skipRest) {
     Update-WerBootstrapPath
     $aiExit = Invoke-WerInstaller 'install-ai-coding.ps1'
+    if ($aiExit -eq 1) {
+        $skipRest = $true
+        Write-Host "ai-coding FAIL — skipping apps; running doctor."
+    }
+}
+
+if (-not $skipRest) {
+    Update-WerBootstrapPath
+    $appsExit = Invoke-WerInstaller 'install-apps.ps1'
 }
 
 Write-Host ""
@@ -95,13 +105,13 @@ Update-WerBootstrapPath
 $doctorExit = $LASTEXITCODE
 
 Write-Host ""
-Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit devtools=$devtoolsExit ai-coding=$aiExit doctor=$doctorExit"
+Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit devtools=$devtoolsExit ai-coding=$aiExit apps=$appsExit doctor=$doctorExit"
 
-if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $devtoolsExit -eq 1 -or $aiExit -eq 1 -or $doctorExit -eq 1) {
+if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $devtoolsExit -eq 1 -or $aiExit -eq 1 -or $appsExit -eq 1 -or $doctorExit -eq 1) {
     Write-Host "BOOTSTRAP: FAIL"
     exit 1
 }
-if ($foundationExit -eq 2 -or $terminalExit -eq 2 -or $devtoolsExit -eq 2 -or $aiExit -eq 2) {
+if ($foundationExit -eq 2 -or $terminalExit -eq 2 -or $devtoolsExit -eq 2 -or $aiExit -eq 2 -or $appsExit -eq 2) {
     Write-Host "BOOTSTRAP: PARTIAL"
     exit 2
 }

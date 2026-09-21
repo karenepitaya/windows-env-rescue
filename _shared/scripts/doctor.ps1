@@ -40,6 +40,25 @@ function Test-VerifyLine([string]$Verify) {
     } catch { return $false }
 }
 
+function Update-WerPathIfNeeded {
+    try {
+        $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                    [Environment]::GetEnvironmentVariable('PATH', 'User')
+        $localBin = Join-Path $env:USERPROFILE '.local\bin'
+        if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
+            $env:PATH = "$localBin;$env:PATH"
+        }
+        $scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
+        if ($scoopCmd) {
+            $root = Split-Path (Split-Path $scoopCmd.Source -Parent) -Parent
+            $shims = Join-Path $root 'shims'
+            if ((Test-Path $shims) -and $env:PATH -notlike "*$shims*") {
+                $env:PATH = "$shims;$env:PATH"
+            }
+        }
+    } catch { }
+}
+
 function Get-ManifestLayerState([string]$ManifestPath) {
     if (-not (Test-Path -LiteralPath $ManifestPath)) {
         return @{ State = 'UNKNOWN'; Detail = "manifest missing: $ManifestPath" }
@@ -197,6 +216,35 @@ if (Test-Path -LiteralPath $aiPath) {
     }
 }
 Write-Layer 'L3' 'ai-coding' $aiState $aiDetail
+
+# L4 apps
+$appsPath = Join-Path $shared 'manifests\apps.toml'
+$appsState = 'UNKNOWN'
+$appsDetail = "manifest missing"
+if (Test-Path -LiteralPath $appsPath) {
+    Update-WerPathIfNeeded
+    $miss = @()
+    $scoopOut = @()
+    try { $scoopOut = @(scoop list 2>$null | Out-String) } catch { $scoopOut = @() }
+    $pkgText = ($scoopOut -join "`n")
+    foreach ($item in @(
+        @{ pkg = 'vscode'; bin = 'code' },
+        @{ pkg = 'cc-switch'; bin = 'cc-switch' },
+        @{ pkg = 'chatgpt'; bin = $null }
+    )) {
+        $binOk = $item.bin -and (Get-Command $item.bin -ErrorAction SilentlyContinue)
+        $pkgOk = $pkgText -match [regex]::Escape($item.pkg)
+        if (-not ($binOk -or $pkgOk)) { $miss += $item.pkg }
+    }
+    if ($miss.Count -gt 0) {
+        $appsState = 'RED'
+        $appsDetail = "missing: $($miss -join ', ')"
+    } else {
+        $appsState = 'GREEN'
+        $appsDetail = 'vscode+cc-switch+chatgpt present (scoop/bin)'
+    }
+}
+Write-Layer 'L4' 'apps' $appsState $appsDetail
 
 # L6 yazi (optional informational)
 $yaziCmd = Get-Command yazi -ErrorAction SilentlyContinue

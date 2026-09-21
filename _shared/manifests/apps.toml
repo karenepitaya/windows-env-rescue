@@ -1,0 +1,26 @@
+schema = 1
+name = "apps"
+
+[[tool]]
+id = "vscode"
+scoop = "vscode"
+bucket = "extras"
+binary = "code"
+required = true
+verify = "code --version"
+
+[[tool]]
+id = "cc-switch"
+scoop = "cc-switch"
+bucket = "extras"
+binary = "cc-switch"
+required = true
+verify = ""
+
+[[tool]]
+id = "chatgpt"
+scoop = "chatgpt"
+bucket = "extras"
+binary = "ChatGPT"
+required = true
+verify = ""

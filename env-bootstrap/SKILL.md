@@ -1,6 +1,6 @@
 ---
 name: env-bootstrap
-description: One-shot Windows new-machine bootstrap for windows-env-rescue — runs foundation, terminal, devtools, ai-coding, then doctor. Use when the user wants 新机装机 / bootstrap / 一条龙. FAIL stops later install layers; PARTIAL continues.
+description: One-shot Windows new-machine bootstrap for windows-env-rescue — foundation → terminal → devtools → ai-coding → apps → doctor. FAIL stops later install layers.
 license: MIT
 compatibility: Windows 10/11. Prefers PowerShell 7+ after foundation installs it.
 metadata:
@@ -15,11 +15,12 @@ metadata:
 
 1. `install-foundation.ps1`（L0）
 2. `install-terminal-tools.ps1`（L1）
-3. `install-devtools.ps1`（L2，bootstrap 带 `-SkipOptional`）
-4. `install-ai-coding.ps1`（L3：Claude Code + Pi）
-5. `doctor.ps1`（汇总验收）
+3. `install-devtools.ps1`（L2，`-SkipOptional`）
+4. `install-ai-coding.ps1`（L3）
+5. `install-apps.ps1`（L4）
+6. `doctor.ps1`
 
-完成线：L0–L3 无 RED（optional/git 身份/observe 可为 YELLOW）。
+完成线：L0–L4 无 RED（optional/身份/verify limited 可为 YELLOW）。
 
 ## Language
 
