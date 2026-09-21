@@ -245,6 +245,22 @@ if (Test-Path -LiteralPath $appsPath) {
 }
 Write-Layer 'L4' 'apps' $appsState $appsDetail
 
+# L5 dotfiles (informational — package presence only; not a bootstrap blocker)
+$dfRoot = Join-Path $env:USERPROFILE 'windows-env-rescue-dotfiles'
+$dfState = 'YELLOW'
+$dfDetail = 'no export package under USERPROFILE\windows-env-rescue-dotfiles'
+if (Test-Path -LiteralPath $dfRoot) {
+    $latest = Get-ChildItem -LiteralPath $dfRoot -Directory -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending | Select-Object -First 1
+    if ($latest -and (Test-Path (Join-Path $latest.FullName 'manifest.json'))) {
+        $dfState = 'GREEN'
+        $dfDetail = "latest export: $($latest.Name)"
+    } elseif ($latest) {
+        $dfDetail = "folder exists but no manifest: $($latest.Name)"
+    }
+}
+Write-Layer 'L5' 'dotfiles' $dfState $dfDetail
+
 # L6 yazi (optional informational)
 $yaziCmd = Get-Command yazi -ErrorAction SilentlyContinue
 if ($yaziCmd) {

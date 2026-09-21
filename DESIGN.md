@@ -50,7 +50,7 @@ L1  env-terminal     WT · 字体 · starship · eza/bat/fzf/zoxide · profile �
 L2  env-devtools     git required · nvm+Node LTS · uv+Python · pnpm · make/cmake  [已实现 phase2]
 L3  env-ai-coding    Claude Code + Pi（探测优先自动装）· Codex/Kimi 只观察  [已实现 phase3]
 L4  env-apps         必要 GUI：VS Code · cc-switch；其余用户自装  [已实现 phase4]
-L5  env-dotfiles     本机 profile/编辑器/git 配置 导出·导入         [二期，跨机同步三期]
+L5  env-dotfiles     本机配置导出/导入（profile/git/WT/VS Code/yazi+scoop清单）  [已实现 phase5]
 L6  yazi-*           文件管理（detect / install / config，保留）    [已有]
 横切  env-doctor      整机分层体检（绿/黄/红 + 修复指引）
 ```

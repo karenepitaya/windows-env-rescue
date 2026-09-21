@@ -9,8 +9,9 @@
 - **L2 开发底座**：git、nvm+Node LTS、uv+Python、pnpm、make/cmake
 - **L3 AI 编码 CLI**：探测后安装 Claude Code + Pi（其余只观察）
 - **L4 必要应用**：仅 VS Code + cc-switch（scoop）；其余 GUI 用户自装
+- **L5 配置包**：导出/导入 profile、git、WT、VS Code、yazi + scoop 清单（本地包）
 - **体检**：分层 GREEN / YELLOW / RED
-- **总入口**：一条 bootstrap（L0→L4→doctor）
+- **总入口**：bootstrap 装环境（L0→L4）；dotfiles 导入单独跑
 - **文件管理层**：Yazi 诊断 / 重装 / 配置（保留）
 
 设计说明见 [DESIGN.md](DESIGN.md)、[docs/compose/spec/env-phase1.md](docs/compose/spec/env-phase1.md) 与 [env-phase2-devtools.md](docs/compose/spec/env-phase2-devtools.md)。
@@ -49,6 +50,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\_shared\scripts\bootstrap.ps1
 | `/env-devtools` | L2 | git/nvm+node/uv+python/pnpm/make/cmake | 会 |
 | `/env-ai-coding` | L3 | Claude Code + Pi（探测优先；Codex/Kimi 只观察） | 会 |
 | `/env-apps` | L4 | 仅必要 GUI：VS Code、cc-switch（其余自装） | 会 |
+| `/env-dotfiles` | L5 | 本机配置导出/导入（不重装应用） | 导入会写配置 |
 | `/env-doctor` | 横切 | 分层只读体检 | 不会 |
 | `/yazi-detect` | L6 | Yazi 只读诊断 | 不会 |
 | `/yazi-install` | L6 | Yazi 清理重装 | 会 |
@@ -62,7 +64,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\_shared\scripts\bootstrap.ps1
 $src = "path\to\windows-env-rescue"  # 本仓库克隆路径
 $dst = "$env:USERPROFILE\.claude\skills"
 $names = @(
-  "env-bootstrap", "env-foundation", "env-terminal", "env-devtools", "env-ai-coding", "env-apps", "env-doctor",
+  "env-bootstrap", "env-foundation", "env-terminal", "env-devtools", "env-ai-coding", "env-apps", "env-dotfiles", "env-doctor",
   "yazi-detect", "yazi-install", "yazi-config", "_shared"
 )
 foreach ($name in $names) {
@@ -88,12 +90,13 @@ foreach ($name in $names) {
 - `devtools.toml` — git/nvm/uv（required）、make/cmake（optional）；Node 走 nvm，Python 走 uv
 - `ai-coding.toml` — Claude Code + Pi（可装）；codex/kimi 仅观察
 - `apps.toml` — 仅必要 GUI：vscode / cc-switch
+- dotfiles：见 `export-dotfiles.ps1` / `import-dotfiles.ps1`（包在用户目录）
 
 ## 维护者
 
 ```text
 windows-env-rescue/
-├── env-bootstrap/ env-foundation/ env-terminal/ env-devtools/ env-ai-coding/ env-apps/ env-doctor/
+├── env-bootstrap/ env-foundation/ env-terminal/ env-devtools/ env-ai-coding/ env-apps/ env-dotfiles/ env-doctor/
 ├── yazi-detect/ yazi-install/ yazi-config/
 └── _shared/
     ├── manifests/

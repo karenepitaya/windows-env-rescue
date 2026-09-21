@@ -1,6 +1,6 @@
 ---
 name: env-doctor
-description: Read-only layered health check for windows-env-rescue on Windows. Reports L0–L4 layers and optional L6 yazi as GREEN/YELLOW/RED/UNKNOWN. Point failures at the matching /env-* skill.
+description: Read-only layered health check for windows-env-rescue on Windows. Reports L0–L5 layers and optional L6 yazi as GREEN/YELLOW/RED/UNKNOWN. L5 is informational (export package presence). Point failures at the matching /env-* skill.
 license: MIT
 compatibility: Windows 10/11. Any PowerShell; complete probes prefer pwsh 7+.
 metadata:
