@@ -1,0 +1,28 @@
+schema = 1
+name = "ai-coding"
+
+# Not scoop packages — official installers (see S2 contract).
+
+[[tool]]
+id = "claude-code"
+binary = "claude"
+required = true
+install = "native-ps1"
+url = "https://claude.ai/install.ps1"
+verify = "claude --version"
+
+[[tool]]
+id = "pi"
+binary = "pi"
+required = true
+install = "native-ps1"
+url = "https://pi.dev/install.ps1"
+verify = "pi --version"
+
+[[observe]]
+id = "codex"
+binary = "codex"
+
+[[observe]]
+id = "kimi"
+binary = "kimi"

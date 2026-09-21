@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-  windows-env-rescue — L0–L2 bootstrap orchestrator.
+  windows-env-rescue — L0–L3 bootstrap orchestrator.
 
 .DESCRIPTION
-  Runs: install-foundation.ps1 -> install-terminal-tools.ps1 -> install-devtools.ps1 -> doctor.ps1
+  Order: foundation -> terminal -> devtools -> ai-coding -> doctor
   Any install-layer FAIL skips higher install layers; doctor always runs last.
   Exit codes:
     0 = all install layers OK and doctor not RED (YELLOW allowed)
@@ -15,24 +15,33 @@ $ErrorActionPreference = 'Continue'
 $scripts = $PSScriptRoot
 
 Write-Host "########## windows-env-rescue bootstrap ##########"
-Write-Host "Order: foundation -> terminal -> devtools -> doctor"
+Write-Host "Order: foundation -> terminal -> devtools -> ai-coding -> doctor"
 
 $foundationExit = 0
 $terminalExit = 0
 $devtoolsExit = 0
+$aiExit = 0
 $doctorExit = 0
 $skipRest = $false
 
-function Invoke-WerInstaller([string]$FileName) {
+function Invoke-WerInstaller([string]$FileName, [string[]]$ExtraArgs = @()) {
     $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
     $path = Join-Path $scripts $FileName
     Write-Host ""
     if ($pwsh) {
         Write-Host ">>>>>> $FileName (pwsh)"
-        & pwsh -NoProfile -File $path | Out-Host
+        if ($ExtraArgs.Count -gt 0) {
+            & pwsh -NoProfile -File $path @ExtraArgs | Out-Host
+        } else {
+            & pwsh -NoProfile -File $path | Out-Host
+        }
     } else {
         Write-Host ">>>>>> $FileName"
-        & $path | Out-Host
+        if ($ExtraArgs.Count -gt 0) {
+            & $path @ExtraArgs | Out-Host
+        } else {
+            & $path | Out-Host
+        }
     }
     return $LASTEXITCODE
 }
@@ -40,6 +49,10 @@ function Invoke-WerInstaller([string]$FileName) {
 function Update-WerBootstrapPath {
     $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
                 [Environment]::GetEnvironmentVariable('PATH', 'User')
+    $localBin = Join-Path $env:USERPROFILE '.local\bin'
+    if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
+        $env:PATH = "$localBin;$env:PATH"
+    }
 }
 
 Write-Host ""
@@ -48,7 +61,7 @@ Write-Host ">>>>>> install-foundation.ps1"
 $foundationExit = $LASTEXITCODE
 if ($foundationExit -eq 1) {
     $skipRest = $true
-    Write-Host "foundation FAIL — skipping terminal/devtools; running doctor."
+    Write-Host "foundation FAIL — skipping higher install layers; running doctor."
 }
 
 if (-not $skipRest) {
@@ -56,13 +69,23 @@ if (-not $skipRest) {
     $terminalExit = Invoke-WerInstaller 'install-terminal-tools.ps1'
     if ($terminalExit -eq 1) {
         $skipRest = $true
-        Write-Host "terminal FAIL — skipping devtools; running doctor."
+        Write-Host "terminal FAIL — skipping higher install layers; running doctor."
     }
 }
 
 if (-not $skipRest) {
     Update-WerBootstrapPath
-    $devtoolsExit = Invoke-WerInstaller 'install-devtools.ps1'
+    # Git identity stays user-guided; bootstrap does not invent identity.
+    $devtoolsExit = Invoke-WerInstaller 'install-devtools.ps1' @('-SkipOptional')
+    if ($devtoolsExit -eq 1) {
+        $skipRest = $true
+        Write-Host "devtools FAIL — skipping ai-coding; running doctor."
+    }
+}
+
+if (-not $skipRest) {
+    Update-WerBootstrapPath
+    $aiExit = Invoke-WerInstaller 'install-ai-coding.ps1'
 }
 
 Write-Host ""
@@ -72,13 +95,13 @@ Update-WerBootstrapPath
 $doctorExit = $LASTEXITCODE
 
 Write-Host ""
-Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit devtools=$devtoolsExit doctor=$doctorExit"
+Write-Host "Summary: foundation=$foundationExit terminal=$terminalExit devtools=$devtoolsExit ai-coding=$aiExit doctor=$doctorExit"
 
-if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $devtoolsExit -eq 1 -or $doctorExit -eq 1) {
+if ($foundationExit -eq 1 -or $terminalExit -eq 1 -or $devtoolsExit -eq 1 -or $aiExit -eq 1 -or $doctorExit -eq 1) {
     Write-Host "BOOTSTRAP: FAIL"
     exit 1
 }
-if ($foundationExit -eq 2 -or $terminalExit -eq 2 -or $devtoolsExit -eq 2) {
+if ($foundationExit -eq 2 -or $terminalExit -eq 2 -or $devtoolsExit -eq 2 -or $aiExit -eq 2) {
     Write-Host "BOOTSTRAP: PARTIAL"
     exit 2
 }

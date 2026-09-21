@@ -42,17 +42,20 @@ $required = @(
     "env-doctor\SKILL.md",
     "env-bootstrap\SKILL.md",
     "env-devtools\SKILL.md",
+    "env-ai-coding\SKILL.md",
     "_shared\scripts\apply-config.ps1",
     "_shared\scripts\profile-block.ps1",
     "_shared\scripts\install-terminal-tools.ps1",
     "_shared\scripts\install-foundation.ps1",
     "_shared\scripts\install-devtools.ps1",
+    "_shared\scripts\install-ai-coding.ps1",
     "_shared\scripts\doctor.ps1",
     "_shared\scripts\bootstrap.ps1",
     "_shared\scripts\Import-WerManifest.ps1",
     "_shared\manifests\foundation.toml",
     "_shared\manifests\terminal.toml",
     "_shared\manifests\devtools.toml",
+    "_shared\manifests\ai-coding.toml",
     "_shared\config\keymap-zh.toml",
     "_shared\config\wt-keybindings.json",
     "_shared\references\tool-catalog.md"
@@ -178,6 +181,21 @@ if (Test-Path $devtoolsManifestPath) {
     }
 } else {
     Fail "missing devtools manifest"
+}
+
+$aiManifestPath = Join-Path $sharedDir "manifests\ai-coding.toml"
+if (Test-Path $aiManifestPath) {
+    Pass "ai-coding manifest present"
+    $aiManifest = Get-Content $aiManifestPath -Raw -Encoding UTF8
+    foreach ($bin in "claude", "pi") {
+        if ($aiManifest -match ('(?m)^binary\s*=\s*"' + [regex]::Escape($bin) + '"')) {
+            Pass "ai-coding tool mapping present: $bin"
+        } else {
+            Fail "ai-coding tool mapping missing: $bin"
+        }
+    }
+} else {
+    Fail "missing ai-coding manifest"
 }
 
 # Validate profile-block.ps1 has correct starship-before-zoxide order

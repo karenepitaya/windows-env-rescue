@@ -162,6 +162,42 @@ if ($ds.State -ne 'UNKNOWN') {
 }
 Write-Layer 'L2' 'devtools' $ds.State $ds.Detail
 
+# L3 ai-coding
+try {
+    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('PATH', 'User')
+    $localBin = Join-Path $env:USERPROFILE '.local\bin'
+    if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
+        $env:PATH = "$localBin;$env:PATH"
+    }
+} catch { }
+
+$aiPath = Join-Path $shared 'manifests\ai-coding.toml'
+$aiState = 'UNKNOWN'
+$aiDetail = "manifest missing"
+if (Test-Path -LiteralPath $aiPath) {
+    $missReq = @()
+    $obs = @()
+    foreach ($bin in @('claude', 'pi')) {
+        if (-not (Get-Command $bin -ErrorAction SilentlyContinue)) { $missReq += $bin }
+    }
+    foreach ($ob in @('codex', 'kimi')) {
+        $obs += if (Get-Command $ob -ErrorAction SilentlyContinue) { "$ob+" } else { "$ob-" }
+    }
+    $obsText = ($obs -join ' ')
+    if ($missReq.Count -gt 0) {
+        $aiState = 'RED'
+        $aiDetail = "missing: $($missReq -join ', ')  [$obsText]"
+    } else {
+        $ver = $null
+        try { $ver = (cmd /c "claude --version" 2>&1 | Select-Object -First 1) } catch { }
+        $aiState = 'GREEN'
+        $aiDetail = "claude+pi OK  [$obsText]"
+        if ($ver) { $aiDetail += "  $ver" }
+    }
+}
+Write-Layer 'L3' 'ai-coding' $aiState $aiDetail
+
 # L6 yazi (optional informational)
 $yaziCmd = Get-Command yazi -ErrorAction SilentlyContinue
 if ($yaziCmd) {
