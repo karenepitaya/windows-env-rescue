@@ -41,12 +41,26 @@ function Test-VerifyLine([string]$Verify) {
 }
 
 function Update-WerPathIfNeeded {
+    # Canonical PATH refresh: rebuild from registry so probes see tools installed
+    # for the user even when the hosting process inherited a stale/trimmed PATH
+    # (e.g. agent shells missing WindowsApps, scoop shims, nvm symlink).
     try {
         $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
                     [Environment]::GetEnvironmentVariable('PATH', 'User')
-        $localBin = Join-Path $env:USERPROFILE '.local\bin'
-        if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
-            $env:PATH = "$localBin;$env:PATH"
+        # nvm-windows: reload vars and make sure the node symlink dir is visible
+        foreach ($key in @('NVM_HOME', 'NVM_SYMLINK')) {
+            $val = [Environment]::GetEnvironmentVariable($key, 'User')
+            if (-not $val) { $val = [Environment]::GetEnvironmentVariable($key, 'Machine') }
+            if ($val) { Set-Item -Path "env:$key" -Value $val -ErrorAction SilentlyContinue }
+        }
+        if ($env:NVM_SYMLINK -and $env:PATH -notlike "*$env:NVM_SYMLINK*") {
+            $env:PATH = "$env:NVM_SYMLINK;$env:PATH"
+        }
+        # scoop shims: default location first, then derive from scoop itself
+        # (covers custom SCOOP root either way)
+        $defaultShims = Join-Path $env:USERPROFILE 'scoop\shims'
+        if ((Test-Path $defaultShims) -and $env:PATH -notlike "*$defaultShims*") {
+            $env:PATH = "$defaultShims;$env:PATH"
         }
         $scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
         if ($scoopCmd) {
@@ -55,6 +69,10 @@ function Update-WerPathIfNeeded {
             if ((Test-Path $shims) -and $env:PATH -notlike "*$shims*") {
                 $env:PATH = "$shims;$env:PATH"
             }
+        }
+        $localBin = Join-Path $env:USERPROFILE '.local\bin'
+        if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
+            $env:PATH = "$localBin;$env:PATH"
         }
     } catch { }
 }
@@ -92,6 +110,11 @@ function Get-ManifestLayerState([string]$ManifestPath) {
 }
 
 Write-Output "########## windows-env-rescue doctor ##########"
+
+# Refresh PATH from the registry BEFORE the first probe: the hosting process may
+# have inherited a stale PATH (missing WindowsApps / scoop shims / nvm symlink),
+# which previously caused false REDs on L0/L1 (e.g. Store-installed pwsh).
+Update-WerPathIfNeeded
 
 # L0 foundation
 $foundationPath = Join-Path $shared 'manifests\foundation.toml'
@@ -135,21 +158,8 @@ Write-Layer 'L1' 'terminal' $ts.State $ts.Detail
 
 # L2 devtools
 $devtoolsPath = Join-Path $shared 'manifests\devtools.toml'
-# Refresh PATH/nvm so doctor sees freshly installed tools in-session
-try {
-    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
-                [Environment]::GetEnvironmentVariable('PATH', 'User')
-    foreach ($key in @('NVM_HOME', 'NVM_SYMLINK')) {
-        $val = [Environment]::GetEnvironmentVariable($key, 'User')
-        if (-not $val) { $val = [Environment]::GetEnvironmentVariable($key, 'Machine') }
-        if ($val) { Set-Item -Path "env:$key" -Value $val -ErrorAction SilentlyContinue }
-    }
-    $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'User')
-    if (-not $link) { $link = [Environment]::GetEnvironmentVariable('NVM_SYMLINK', 'Machine') }
-    if ($link -and $env:PATH -notlike "*$link*") { $env:PATH = "$link;$env:PATH" }
-    $shims = Join-Path $env:USERPROFILE 'scoop\shims'
-    if ((Test-Path $shims) -and $env:PATH -notlike "*$shims*") { $env:PATH = "$shims;$env:PATH" }
-} catch { }
+# Idempotent re-refresh via the canonical helper (cheap; keeps layers symmetric)
+Update-WerPathIfNeeded
 
 $ds = Get-ManifestLayerState $devtoolsPath
 $extra = @()
@@ -182,14 +192,7 @@ if ($ds.State -ne 'UNKNOWN') {
 Write-Layer 'L2' 'devtools' $ds.State $ds.Detail
 
 # L3 ai-coding
-try {
-    $env:PATH = [Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
-                [Environment]::GetEnvironmentVariable('PATH', 'User')
-    $localBin = Join-Path $env:USERPROFILE '.local\bin'
-    if ((Test-Path $localBin) -and $env:PATH -notlike "*$localBin*") {
-        $env:PATH = "$localBin;$env:PATH"
-    }
-} catch { }
+Update-WerPathIfNeeded
 
 $aiPath = Join-Path $shared 'manifests\ai-coding.toml'
 $aiState = 'UNKNOWN'
