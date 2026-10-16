@@ -123,9 +123,12 @@ Write-Output ""
 if ($missingPkgs.Count -eq 0) {
     Write-Output "All command-line dependencies already present. Nothing to install."
 } else {
-    # Verify scoop 'main' bucket exists (needed for most packages)
-    $buckets = scoop bucket list 2>$null
-    if ($buckets -notmatch 'main') {
+    # Verify scoop 'main' bucket exists (needed for most packages).
+    # NOTE: scoop bucket list emits objects in pwsh 7; normalize to text first —
+    # `-notmatch` on an array acts as a FILTER and stays truthy whenever ANY row
+    # (e.g. 'extras') doesn't contain the pattern, falsely reporting a missing bucket.
+    $buckets = @(scoop bucket list 2>$null | Out-String)
+    if (($buckets -join "`n") -notmatch 'main') {
         Write-Output "Scoop 'main' bucket is missing. Adding it..."
         scoop bucket add main
         if ($LASTEXITCODE -ne 0) {
@@ -181,8 +184,9 @@ try {
 if ($fontAlreadyInstalled) {
     Write-Output "Nerd Font already installed via scoop: $fontPkg ($fontFace)."
 } else {
-    $bucketsNow = scoop bucket list 2>$null
-    if ($bucketsNow -notmatch 'nerd-fonts') {
+    # Same array-filter pitfall as the 'main' check above: normalize to text.
+    $bucketsNow = @(scoop bucket list 2>$null | Out-String)
+    if (($bucketsNow -join "`n") -notmatch 'nerd-fonts') {
         Write-Output "Adding the 'nerd-fonts' scoop bucket..."
         scoop bucket add nerd-fonts
         if ($LASTEXITCODE -ne 0) {
@@ -192,7 +196,7 @@ if ($fontAlreadyInstalled) {
         }
     }
 
-    $bucketsNow = scoop bucket list 2>$null
+    $bucketsNow = @(scoop bucket list 2>$null | Out-String) -join "`n"
     if ($bucketsNow -match 'nerd-fonts') {
         Write-Output "Installing $fontPkg (this provides the icons yazi draws)..."
         scoop install "nerd-fonts/$fontPkg"
